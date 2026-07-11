@@ -1,6 +1,6 @@
 [package]
 name="insight"
-version="0.1.0"
+version="0.1.1"
 description="Local-first Instagram relationship analytics"
 edition="2021"
 [lib]

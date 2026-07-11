@@ -4,6 +4,12 @@ All notable user-visible changes to insIGht are documented here. The project fol
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-11
+
+### Fixed
+
+- Registered platform-specific PNG, ICNS, and ICO assets for cross-platform installer packaging
+
 ## [0.1.0] - 2026-07-11
 
 ### Added
@@ -23,5 +29,6 @@ All notable user-visible changes to insIGht are documented here. The project fol
 - Keeps source archives outside application storage
 - Performs no Instagram login, scraping, telemetry, or automatic network synchronization
 
-[Unreleased]: https://github.com/almondsun/insight/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/almondsun/insight/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/almondsun/insight/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/almondsun/insight/releases/tag/v0.1.0
