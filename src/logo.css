@@ -1,0 +1,56 @@
+.mark {
+  width: 43px;
+  height: 30px;
+  background: #fffafd;
+  border: 3px solid #e1306c;
+  border-radius: 50% 10%;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  transform: rotate(45deg);
+}
+
+.iris {
+  position: relative;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: linear-gradient(35deg, #ff7a00, #e1306c 48%, #833ab4);
+  display: grid;
+  place-items: center;
+  border: 2px solid #fffafd;
+  box-shadow: 0 0 0 3px #833ab4;
+  transform: rotate(-45deg);
+}
+
+.iris::before {
+  content: "";
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border: 1.8px solid #fffafd;
+  border-radius: 4px;
+}
+
+.camera-lens {
+  width: 5px;
+  height: 5px;
+  border: 1.5px solid #fffafd;
+  border-radius: 50%;
+}
+
+.camera-flash {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  margin: -7px 0 0 7px;
+  border-radius: 50%;
+  background: #fffafd;
+}
+
+.brand-eye {
+  width: 54px;
+  height: 38px;
+  flex: 0 0 auto;
+  overflow: visible;
+}

@@ -1,0 +1,125 @@
+:root {
+  color: #262229;
+  background: #f8f6f8;
+}
+
+body {
+  background: #f8f6f8;
+}
+
+aside {
+  background: #17151b;
+}
+
+.brand span,
+.privacy span {
+  color: #b8afb9;
+}
+
+nav button {
+  color: #c9c1ca;
+}
+
+nav button.active,
+nav button:hover {
+  background: #302832;
+  color: #fffafd;
+}
+
+.privacy {
+  border-color: #3b303c;
+}
+
+header p,
+.metrics span,
+.thead,
+.empty,
+.welcome {
+  color: #746b76;
+}
+
+button,
+select,
+label {
+  border-color: #ddd5dd;
+  color: #302a31;
+}
+
+.primary {
+  background: #e1306c;
+  border-color: #e1306c;
+  color: #fff;
+}
+
+.primary:hover {
+  background: #c72a61;
+}
+
+.metrics article,
+.workspace,
+.welcome {
+  border-color: #e5dfe5;
+  box-shadow: 0 1px 2px rgba(38, 25, 39, .04);
+}
+
+.metrics article:nth-child(1) { border-top: 3px solid #e1306c; }
+.metrics article:nth-child(2) { border-top: 3px solid #833ab4; }
+.metrics article:nth-child(3) { border-top: 3px solid #fd8d32; }
+.metrics article:nth-child(4) { border-top: 3px solid #c13584; }
+.metrics article:nth-child(5) { border-top: 3px solid #f4b400; }
+.metrics article:nth-child(6) { border-top: 3px solid #5851db; }
+
+.toolbar,
+.tr,
+.snapshots > div {
+  border-color: #eee9ee;
+}
+
+.tabs button {
+  color: #706671;
+}
+
+.tabs button.active {
+  color: #c13584;
+  background: #fbeaf1;
+}
+
+.thead {
+  background: #faf8fa;
+}
+
+.avatar {
+  background: #f8e5ee;
+  color: #b52662;
+}
+
+.badge {
+  background: #f1edf1;
+  color: #5f5660;
+}
+
+.badge.added {
+  background: #e9f6ee;
+  color: #257548;
+}
+
+.badge.removed {
+  background: #fde9ef;
+  color: #b32658;
+}
+
+.account a,
+.welcome > svg {
+  color: #c13584;
+}
+
+.notice {
+  background: #fff6e8;
+  border-color: #f3c879;
+}
+
+.notice.error {
+  background: #fff0f3;
+  border-color: #ee9ab6;
+  color: #9e214e;
+}

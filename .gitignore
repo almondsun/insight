@@ -1,0 +1,16 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+*.db
+*.db-shm
+*.db-wal
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
+exports/
+private-fixtures/
+instagram-*.zip
+instagram-*.json
