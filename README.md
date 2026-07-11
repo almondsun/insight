@@ -1,25 +1,62 @@
-# insIGht
+<div align="center">
+  <img src="src-tauri/icons/icon.png" alt="insIGht eye logo" width="128" height="128">
+  <h1>insIGht</h1>
+  <p><strong>Private, local-first Instagram relationship analytics.</strong></p>
+  <p>Understand followers, mutuals, non-reciprocal relationships, and changes over time without connecting your Instagram account.</p>
 
-insIGht is a local-first desktop application for understanding Instagram account relationships. It imports the official JSON account export and presents followers, following, mutuals, non-reciprocal relationships, and changes between snapshots without sending account data to a server.
+  [![CI](https://github.com/almondsun/insight/actions/workflows/ci.yml/badge.svg)](https://github.com/almondsun/insight/actions/workflows/ci.yml)
+  [![CodeQL](https://github.com/almondsun/insight/actions/workflows/codeql.yml/badge.svg)](https://github.com/almondsun/insight/actions/workflows/codeql.yml)
+  [![License: MIT](https://img.shields.io/badge/license-MIT-e1306c.svg)](LICENSE)
+  [![Tauri 2](https://img.shields.io/badge/Tauri-2-833ab4.svg)](https://v2.tauri.app/)
+</div>
 
-## Features
+![insIGht import screen](docs/assets/insight-preview.png)
 
-- Import official Instagram JSON ZIP archives, individual JSON files, or extracted folders
-- Track multiple Instagram accounts and import snapshots over time
-- Browse followers, following, mutuals, and non-reciprocal relationships
-- Search relationship lists and compare consecutive snapshots
-- Detect duplicate imports
-- Export relationship reports as CSV or JSON
-- Delete individual snapshots while keeping the remaining history
-- Store all normalized data locally in SQLite
+## What It Does
 
-## Privacy
+insIGht turns Instagram's official **Download Your Information** JSON archive into a searchable desktop dashboard. It never asks for an Instagram password, uses no scraping or unofficial API, and does not upload relationship data.
 
-insIGht does not connect to Instagram, request login secrets, or include telemetry. Imports are parsed locally, and original archives are not retained. The SQLite database is stored in the operating system's application-data directory and relies on normal OS account and disk protections.
+| Capability | Description |
+| --- | --- |
+| Relationship dashboard | Followers, following, mutuals, not-following-back, and followers you do not follow |
+| Snapshot history | Track multiple imports and identify additions or removals between snapshots |
+| Searchable lists | Find accounts quickly across each relationship category |
+| Multi-account support | Keep separate local histories for different Instagram accounts |
+| Reports | Export normalized relationship lists as CSV or JSON |
+| Local persistence | Store parsed snapshots in SQLite in the operating system's application-data directory |
 
-## Supported Input
+## Privacy By Design
 
-Request **Download Your Information** from Instagram Accounts Center and select **JSON**. HTML exports are not supported. Instagram does not reliably include stable numeric IDs, so a username change may appear as one removed account and one added account.
+- **No Instagram login:** insIGht imports files you explicitly select.
+- **No network dependency:** analytics and persistence run locally.
+- **No telemetry:** the application does not track usage.
+- **No archive retention:** source ZIP files are read in place and are not copied into app storage.
+- **Minimal parsing:** only relationship files and owner metadata are read from a full export.
+- **Defensive imports:** archive paths, file counts, individual sizes, and aggregate decompressed sizes are validated.
+
+The local database and exported reports can contain personal information. They rely on your operating-system account and disk protection; database encryption is not currently included.
+
+## Getting Instagram Data
+
+1. Open Instagram **Accounts Center**.
+2. Choose **Your information and permissions**.
+3. Select **Download your information** and the Instagram account to export.
+4. Choose **JSON** as the format. HTML exports are not supported.
+5. Download the ZIP, then choose **Import file** in insIGht. Extracted export folders are also supported.
+
+Instagram exports are snapshots, not event logs. A gained or lost relationship is known only to have changed between two imports. Instagram also does not reliably include stable numeric account IDs, so a username change can appear as one removal and one addition.
+
+## Installation
+
+### Releases
+
+Versioned desktop installers will be published on the [GitHub Releases page](https://github.com/almondsun/insight/releases). Until the first release is published and its unsigned installers are verified on all three platforms, build from source using the development instructions below.
+
+Supported release targets:
+
+- Windows
+- macOS
+- Linux
 
 ## Development
 
@@ -29,35 +66,66 @@ Request **Download Your Information** from Instagram Accounts Center and select 
 - Rust stable
 - [Tauri 2 platform prerequisites](https://v2.tauri.app/start/prerequisites/)
 
-Install dependencies and launch the desktop application:
-
 ```bash
+git clone https://github.com/almondsun/insight.git
+cd insight
 npm ci
 npm run tauri dev
 ```
 
-The standalone Vite server is useful for layout work, but native imports, dialogs, persistence, and exports only work inside Tauri.
+The standalone Vite server is useful for interface work, but imports, native dialogs, SQLite persistence, and exports require the Tauri runtime.
 
 ### Validation
 
+Run the complete local CI-equivalent check:
+
 ```bash
-npm run build
-npm audit --omit=dev
-cargo fmt --manifest-path src-tauri/Cargo.toml --check
-cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-cargo test --manifest-path src-tauri/Cargo.toml
+npm run check
 ```
+
+This runs the frontend production build, Rust formatting check, strict Clippy analysis, and Rust tests. Production dependencies are audited separately in CI with `npm audit --omit=dev`.
 
 ## Architecture
 
-- **React + TypeScript** renders the desktop interface and manages query state.
-- **Tauri + Rust** owns filesystem access, archive validation, imports, reports, and native dialogs.
-- **SQLite** stores normalized accounts, immutable snapshots, and relationships.
-- Imported archives are treated as untrusted input and constrained by path, file-count, and uncompressed-size checks.
+```text
+Instagram JSON ZIP/folder
+          |
+          v
+  Rust import boundary ---- path and decompression limits
+          |
+          v
+ Normalized snapshots ---- SQLite in OS app-data storage
+          |
+          v
+ Tauri commands/events ---- typed TypeScript client
+          |
+          v
+ React desktop interface -- dashboard, lists, history, exports
+```
+
+- **React + TypeScript** renders the interface and manages query state.
+- **Tauri + Rust** owns filesystem access, archive parsing, validation, reports, and native dialogs.
+- **SQLite** stores accounts, immutable snapshots, and normalized relationships.
+- Derived categories are computed from follower/following sets instead of persisted redundantly.
+
+## Current Limitations
+
+- Only official Instagram JSON exports are supported.
+- Relationship changes are inferred between snapshots; exact change times are unavailable.
+- Username changes cannot always be matched to the same person.
+- The local database is not encrypted by insIGht.
+- Installers are not yet code-signed or notarized.
+- insIGht does not automate follows, unfollows, messaging, or other Instagram actions.
+
+## Releases And Packages
+
+**GitHub Releases are useful for insIGht.** They provide versioned Windows, macOS, and Linux installers, checksums/assets, and release notes. The repository already contains a tag-driven workflow that creates draft releases for tags such as `v0.1.0`; see [the release guide](docs/RELEASING.md).
+
+**GitHub Packages is not currently needed.** Packages is intended for reusable libraries, containers, and registries such as npm, Cargo, NuGet, or GHCR. insIGht is an end-user desktop application, so its deliverables belong in Releases. Packages may become relevant later if the parser is extracted as a reusable library or the project ships a containerized service.
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Security reports should follow [SECURITY.md](SECURITY.md) rather than a public issue.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use the structured issue forms for bugs and feature proposals. Security reports must follow [SECURITY.md](SECURITY.md) and should never include a real Instagram export or personal account data.
 
 ## License
 
