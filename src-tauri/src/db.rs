@@ -267,6 +267,7 @@ pub fn delete_account(c: &Connection, id: i64) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser;
     use std::collections::BTreeMap;
     fn parsed(f: &[&str], g: &[&str], hash: &str) -> ParsedImport {
         let map = |xs: &[&str]| {
@@ -309,5 +310,52 @@ mod tests {
         assert!(ch
             .iter()
             .any(|x| x.username == "d" && x.direction == "added"));
+    }
+
+    #[test]
+    #[ignore = "requires INSIGHT_REAL_EXPORT to point to a private local export"]
+    fn imports_real_export_through_sqlite() {
+        let source = std::env::var("INSIGHT_REAL_EXPORT").expect("INSIGHT_REAL_EXPORT is required");
+        let parsed = parser::parse_path(Path::new(&source)).expect("real export should parse");
+        let expected_followers = parsed.followers.len();
+        let expected_following = parsed.following.len();
+        let dir = tempfile::tempdir().expect("temporary directory should be available");
+        let database = dir.path().join("insight.db");
+
+        let snapshot = {
+            let mut connection = open(&database).expect("database should open");
+            let snapshot = commit(&mut connection, &parsed, None, "E2E account")
+                .expect("snapshot should commit");
+            let duplicate = commit(
+                &mut connection,
+                &parsed,
+                Some(snapshot.account_id),
+                "E2E account",
+            );
+            assert!(duplicate.is_err(), "duplicate state should be rejected");
+            snapshot
+        };
+
+        let connection = open(&database).expect("database should reopen");
+        let result = summary(&connection, snapshot.account_id, Some(snapshot.id))
+            .expect("summary should load");
+        assert_eq!(result.followers, expected_followers);
+        assert_eq!(result.following, expected_following);
+        assert_eq!(
+            relationships(&connection, snapshot.id, "followers", "")
+                .expect("followers should load")
+                .len(),
+            expected_followers
+        );
+        assert_eq!(
+            relationships(&connection, snapshot.id, "following", "")
+                .expect("following should load")
+                .len(),
+            expected_following
+        );
+        eprintln!(
+            "persisted {} followers, {} following, and {} mutuals",
+            result.followers, result.following, result.mutuals
+        );
     }
 }
