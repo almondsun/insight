@@ -50,7 +50,7 @@ Instagram exports are snapshots, not event logs. A gained or lost relationship i
 
 ### Releases
 
-Download versioned desktop installers from the [GitHub Releases page](https://github.com/almondsun/insight/releases). Release assets are built for each supported platform; review the release notes for signing status and platform-specific limitations.
+When a version is available, download its desktop installers from the [GitHub Releases page](https://github.com/almondsun/insight/releases). If no release is listed yet, build from source using the development instructions below. Review each release's notes for signing status and platform-specific limitations.
 
 Supported release targets:
 
