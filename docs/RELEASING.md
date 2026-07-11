@@ -1,6 +1,6 @@
 # Releasing insIGht
 
-GitHub Releases are the distribution channel for versioned desktop installers. GitHub Packages is not used because insIGht does not currently publish a reusable library or container.
+GitHub Releases are the distribution channel for versioned desktop installers.
 
 ## Before The First Release
 
