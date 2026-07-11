@@ -61,4 +61,4 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Security 
 
 ## License
 
-No license has been selected yet. All rights are reserved until a license file is added.
+Licensed under the [MIT License](LICENSE).
