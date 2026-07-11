@@ -7,6 +7,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     name: Build ${{ matrix.platform }}
@@ -28,12 +32,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: insIGht ${{ github.ref_name }}
-          releaseBody: See the commit history for changes in this release.
+          releaseBody: This is a draft release. Verify all platform artifacts and replace this text with the prepared release notes before publishing.
           releaseDraft: true
           prerelease: false

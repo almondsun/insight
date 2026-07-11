@@ -50,7 +50,7 @@ Instagram exports are snapshots, not event logs. A gained or lost relationship i
 
 ### Releases
 
-Versioned desktop installers will be published on the [GitHub Releases page](https://github.com/almondsun/insight/releases). Until the first release is published and its unsigned installers are verified on all three platforms, build from source using the development instructions below.
+When a version is available, download its desktop installers from the [GitHub Releases page](https://github.com/almondsun/insight/releases). If no release is listed yet, build from source using the development instructions below. Review each release's notes for signing status and platform-specific limitations.
 
 Supported release targets:
 
@@ -117,11 +117,9 @@ Instagram JSON ZIP/folder
 - Installers are not yet code-signed or notarized.
 - insIGht does not automate follows, unfollows, messaging, or other Instagram actions.
 
-## Releases And Packages
+## Release Process
 
-**GitHub Releases are useful for insIGht.** They provide versioned Windows, macOS, and Linux installers, checksums/assets, and release notes. The repository already contains a tag-driven workflow that creates draft releases for tags such as `v0.1.0`; see [the release guide](docs/RELEASING.md).
-
-**GitHub Packages is not currently needed.** Packages is intended for reusable libraries, containers, and registries such as npm, Cargo, NuGet, or GHCR. insIGht is an end-user desktop application, so its deliverables belong in Releases. Packages may become relevant later if the parser is extracted as a reusable library or the project ships a containerized service.
+Version tags build draft installers through GitHub Actions. Maintainers verify each platform artifact before publishing it with release notes; see [the release guide](docs/RELEASING.md).
 
 ## Contributing
 
