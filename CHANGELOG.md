@@ -8,7 +8,7 @@ All notable user-visible changes to insIGht are documented here. The project fol
 
 ### Fixed
 
-- Registered platform-specific PNG, ICNS, and ICO assets for Linux and Windows installer packaging
+- Registered platform-specific PNG, ICNS, and ICO assets for cross-platform installer packaging
 
 ## [0.1.0] - 2026-07-11
 
