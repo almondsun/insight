@@ -27,13 +27,7 @@ pub fn parse_path(path: &Path) -> Result<ParsedImport, String> {
             .into_iter()
             .filter_map(Result::ok)
         {
-            if entry.file_type().is_file()
-                && entry
-                    .path()
-                    .extension()
-                    .and_then(|x| x.to_str())
-                    .is_some_and(|x| x.eq_ignore_ascii_case("json"))
-            {
+            if entry.file_type().is_file() && is_import_candidate(entry.path()) {
                 if files.len() >= MAX_FILES {
                     return Err("Import contains too many files".into());
                 }
@@ -55,21 +49,17 @@ pub fn parse_path(path: &Path) -> Result<ParsedImport, String> {
         let file = File::open(path).map_err(|e| e.to_string())?;
         let mut zip = zip::ZipArchive::new(file)
             .map_err(|_| "This is not a valid ZIP archive".to_string())?;
-        if zip.len() > MAX_FILES {
-            return Err("Archive contains too many files".into());
-        }
         let mut total = 0;
         for i in 0..zip.len() {
             let mut item = zip.by_index(i).map_err(|e| e.to_string())?;
             let Some(safe) = item.enclosed_name() else {
                 return Err("Archive contains an unsafe path".into());
             };
-            if !safe
-                .extension()
-                .and_then(|x| x.to_str())
-                .is_some_and(|x| x.eq_ignore_ascii_case("json"))
-            {
+            if !is_import_candidate(&safe) {
                 continue;
+            }
+            if files.len() >= MAX_FILES {
+                return Err("Import contains too many relationship files".into());
             }
             if item.size() > MAX_FILE_BYTES {
                 return Err("A JSON file exceeds the 16 MB safety limit".into());
@@ -96,16 +86,33 @@ pub fn parse_path(path: &Path) -> Result<ParsedImport, String> {
     }
     parse_files(name, files)
 }
+
+fn is_import_candidate(path: &Path) -> bool {
+    let lower = path.to_string_lossy().to_lowercase();
+    let filename = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_lowercase();
+    filename == "following.json"
+        || filename.starts_with("followers_") && filename.ends_with(".json")
+        || filename == "followers.json"
+        || lower.ends_with("personal_information/personal_information.json")
+}
 fn parse_files(name: String, files: Vec<(PathBuf, Vec<u8>)>) -> Result<ParsedImport, String> {
     let mut followers = BTreeMap::new();
     let mut following = BTreeMap::new();
     let mut detected = None;
     let mut relevant = 0;
     for (path, data) in files {
-        let lower = path.to_string_lossy().to_lowercase();
-        let target = if lower.contains("followers_") || lower.ends_with("followers.json") {
+        let filename = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or_default()
+            .to_lowercase();
+        let target = if filename.starts_with("followers_") || filename == "followers.json" {
             Some(&mut followers)
-        } else if lower.ends_with("following.json") {
+        } else if filename == "following.json" {
             Some(&mut following)
         } else {
             None
@@ -169,6 +176,7 @@ fn visit(v: &Value, out: &mut Vec<Person>) {
                     if let Some(username) = x
                         .get("value")
                         .and_then(Value::as_str)
+                        .or_else(|| obj.get("title").and_then(Value::as_str))
                         .filter(|x| !x.trim().is_empty())
                     {
                         out.push(Person {
@@ -211,7 +219,7 @@ mod tests {
     #[test]
     fn parses_common_shapes() {
         let a=br#"[{"string_list_data":[{"href":"https://instagram.com/Alice","value":"Alice","timestamp":1}]}]"#.to_vec();
-        let b = br#"{"relationships_following":[{"string_list_data":[{"value":"bob"}]}]}"#.to_vec();
+        let b = br#"{"relationships_following":[{"title":"bob","string_list_data":[{"href":"https://instagram.com/bob","timestamp":2}]}]}"#.to_vec();
         let got = parse_files(
             "x".into(),
             vec![
@@ -230,5 +238,36 @@ mod tests {
             vec![(PathBuf::from("posts.json"), b"[]".to_vec())]
         )
         .is_err())
+    }
+
+    #[test]
+    fn limits_reads_to_relationship_and_owner_files() {
+        assert!(is_import_candidate(Path::new(
+            "connections/followers_and_following/followers_1.json"
+        )));
+        assert!(is_import_candidate(Path::new(
+            "connections/followers_and_following/following.json"
+        )));
+        assert!(is_import_candidate(Path::new(
+            "personal_information/personal_information/personal_information.json"
+        )));
+        assert!(!is_import_candidate(Path::new(
+            "your_instagram_activity/messages/inbox/message_1.json"
+        )));
+        assert!(!is_import_candidate(Path::new("media/photo.jpg")));
+    }
+
+    #[test]
+    #[ignore = "requires INSIGHT_REAL_EXPORT to point to a private local export"]
+    fn parses_sanitized_counts_from_real_export() {
+        let path = std::env::var("INSIGHT_REAL_EXPORT").expect("INSIGHT_REAL_EXPORT is required");
+        let parsed = parse_path(Path::new(&path)).expect("real export should parse");
+        assert!(!parsed.followers.is_empty());
+        assert!(!parsed.following.is_empty());
+        eprintln!(
+            "parsed {} followers and {} following",
+            parsed.followers.len(),
+            parsed.following.len()
+        );
     }
 }
