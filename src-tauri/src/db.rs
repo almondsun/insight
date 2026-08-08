@@ -7,7 +7,60 @@ use std::{
 pub fn open(path: &Path) -> Result<Connection, String> {
     let c = Connection::open(path).map_err(err)?;
     c.pragma_update(None, "foreign_keys", "ON").map_err(err)?;
-    c.execute_batch("CREATE TABLE IF NOT EXISTS accounts(id INTEGER PRIMARY KEY,label TEXT NOT NULL,username TEXT,created_at TEXT NOT NULL);CREATE TABLE IF NOT EXISTS snapshots(id INTEGER PRIMARY KEY,account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,imported_at TEXT NOT NULL,source_name TEXT NOT NULL,state_hash TEXT NOT NULL,followers INTEGER NOT NULL,following INTEGER NOT NULL,UNIQUE(account_id,state_hash));CREATE TABLE IF NOT EXISTS relationships(snapshot_id INTEGER NOT NULL REFERENCES snapshots(id) ON DELETE CASCADE,kind TEXT NOT NULL,norm TEXT NOT NULL,username TEXT NOT NULL,profile_url TEXT,source_timestamp INTEGER,PRIMARY KEY(snapshot_id,kind,norm));CREATE INDEX IF NOT EXISTS idx_rel_snapshot_kind ON relationships(snapshot_id,kind);PRAGMA user_version=1;").map_err(err)?;
+    let version: i64 = c
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .map_err(err)?;
+    if version > 2 {
+        return Err(format!(
+            "Database schema version {version} is newer than this app supports"
+        ));
+    }
+    c.execute_batch(
+        "BEGIN IMMEDIATE;
+         CREATE TABLE IF NOT EXISTS accounts(id INTEGER PRIMARY KEY,label TEXT NOT NULL,username TEXT,created_at TEXT NOT NULL);
+         CREATE TABLE IF NOT EXISTS snapshots(id INTEGER PRIMARY KEY,account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,imported_at TEXT NOT NULL,source_name TEXT NOT NULL,state_hash TEXT NOT NULL,followers INTEGER NOT NULL,following INTEGER NOT NULL,UNIQUE(account_id,state_hash));
+         CREATE TABLE IF NOT EXISTS relationships(snapshot_id INTEGER NOT NULL REFERENCES snapshots(id) ON DELETE CASCADE,kind TEXT NOT NULL,norm TEXT NOT NULL,username TEXT NOT NULL,profile_url TEXT,source_timestamp INTEGER,PRIMARY KEY(snapshot_id,kind,norm));
+         CREATE INDEX IF NOT EXISTS idx_rel_snapshot_kind ON relationships(snapshot_id,kind);
+         CREATE TABLE IF NOT EXISTS fame_observations(
+           id INTEGER PRIMARY KEY,
+           norm TEXT NOT NULL,
+           followers INTEGER NOT NULL CHECK(followers >= 0),
+           following INTEGER NOT NULL CHECK(following >= 0),
+           precision TEXT NOT NULL CHECK(precision IN ('exact','approximate')),
+           observed_at TEXT NOT NULL,
+           source TEXT NOT NULL,
+           corpus_release TEXT NOT NULL,
+           authenticated INTEGER NOT NULL CHECK(authenticated=1),
+           UNIQUE(id,norm,precision),
+           UNIQUE(norm,observed_at,source,corpus_release)
+         );
+         CREATE TABLE IF NOT EXISTS fame_runs(
+           id INTEGER PRIMARY KEY,
+           snapshot_id INTEGER NOT NULL REFERENCES snapshots(id) ON DELETE CASCADE,
+           created_at TEXT NOT NULL,
+           completed_at TEXT,
+           status TEXT NOT NULL CHECK(status IN ('pending','active','paused','completed','cancelled','blocked','failed')),
+           formula_version TEXT NOT NULL,
+           corpus_release TEXT,
+           profile_version TEXT,
+           refresh_all INTEGER NOT NULL DEFAULT 0 CHECK(refresh_all IN (0,1))
+         );
+         CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_fame_run ON fame_runs((1)) WHERE status='active';
+         CREATE TABLE IF NOT EXISTS fame_run_members(
+           run_id INTEGER NOT NULL REFERENCES fame_runs(id) ON DELETE CASCADE,
+           norm TEXT NOT NULL,
+           username TEXT NOT NULL,
+           status TEXT NOT NULL CHECK(status IN ('pending','exact','approximate','private','missing','blocked','failed','cancelled')),
+           observation_id INTEGER,
+           PRIMARY KEY(run_id,norm),
+           FOREIGN KEY(observation_id,norm,status) REFERENCES fame_observations(id,norm,precision) ON DELETE RESTRICT,
+           CHECK((status IN ('exact','approximate') AND observation_id IS NOT NULL) OR (status NOT IN ('exact','approximate') AND observation_id IS NULL))
+         );
+         CREATE INDEX IF NOT EXISTS idx_fame_members_status ON fame_run_members(run_id,status);
+         PRAGMA user_version=2;
+         COMMIT;",
+    )
+    .map_err(err)?;
     Ok(c)
 }
 fn err(e: rusqlite::Error) -> String {
@@ -53,14 +106,35 @@ pub fn commit(
     account: Option<i64>,
     label: &str,
 ) -> Result<Snapshot, String> {
+    let owner = p
+        .detected_username
+        .as_deref()
+        .filter(|username| crate::parser::is_valid_username(username))
+        .ok_or("A validated archive owner is required")?;
     let tx = c.transaction().map_err(err)?;
     let aid = match account {
         Some(id) => {
-            let ok: Option<i64> = tx
-                .query_row("SELECT id FROM accounts WHERE id=?", [id], |r| r.get(0))
+            let existing: Option<(i64, Option<String>)> = tx
+                .query_row("SELECT id,username FROM accounts WHERE id=?", [id], |r| {
+                    Ok((r.get(0)?, r.get(1)?))
+                })
                 .optional()
                 .map_err(err)?;
-            ok.ok_or("Account no longer exists")?
+            let (id, existing_username) = existing.ok_or("Account no longer exists")?;
+            if let (Some(existing), Some(imported)) =
+                (existing_username.as_deref(), p.detected_username.as_deref())
+            {
+                if crate::parser::normalize(existing) != crate::parser::normalize(imported) {
+                    return Err("The archive owner does not match the selected account".into());
+                }
+            } else if existing_username.is_none() && p.detected_username.is_some() {
+                tx.execute(
+                    "UPDATE accounts SET username=? WHERE id=?",
+                    params![p.detected_username, id],
+                )
+                .map_err(err)?;
+            }
+            id
         }
         None => {
             tx.execute(
@@ -71,7 +145,7 @@ pub fn commit(
                     } else {
                         label.trim()
                     },
-                    p.detected_username,
+                    owner,
                     chrono::Utc::now().to_rfc3339()
                 ],
             )
@@ -161,12 +235,34 @@ fn selected(
         _ => BTreeSet::new(),
     }
 }
+
+fn valid_relationship_kind(kind: &str) -> bool {
+    matches!(
+        kind,
+        "followers"
+            | "following"
+            | "mutuals"
+            | "not_following_back"
+            | "followers_not_followed_back"
+    )
+}
 pub fn relationships(
     c: &Connection,
     sid: i64,
     kind: &str,
     search: &str,
 ) -> Result<Vec<Relationship>, String> {
+    if !valid_relationship_kind(kind) {
+        return Err("Unsupported relationship category".into());
+    }
+    let exists = c
+        .query_row("SELECT 1 FROM snapshots WHERE id=?", [sid], |_| Ok(()))
+        .optional()
+        .map_err(err)?
+        .is_some();
+    if !exists {
+        return Err("Snapshot no longer exists".into());
+    }
     let (f, g) = sets(c, sid)?;
     let query = search.to_lowercase();
     Ok(selected(kind, &f, &g)
@@ -186,6 +282,9 @@ pub fn summary(c: &Connection, account: i64, sid: Option<i64>) -> Result<Summary
     let current = sid
         .or_else(|| ids.first().map(|s| s.id))
         .ok_or("No snapshots found")?;
+    if !ids.iter().any(|snapshot| snapshot.id == current) {
+        return Err("Snapshot does not belong to the selected account".into());
+    }
     let (f, g) = sets(c, current)?;
     let previous = ids
         .iter()
@@ -203,8 +302,9 @@ pub fn summary(c: &Connection, account: i64, sid: Option<i64>) -> Result<Summary
         mutuals: selected("mutuals", &f, &g).len(),
         not_following_back: selected("not_following_back", &f, &g).len(),
         followers_not_followed_back: selected("followers_not_followed_back", &f, &g).len(),
-        new_followers: fs.difference(&ps).count(),
-        lost_followers: ps.difference(&fs).count(),
+        new_followers: previous.map_or(0, |_| fs.difference(&ps).count()),
+        lost_followers: previous.map_or(0, |_| ps.difference(&fs).count()),
+        has_previous_snapshot: previous.is_some(),
     })
 }
 pub fn compare(c: &Connection, from: i64, to: i64) -> Result<Vec<Change>, String> {
@@ -254,14 +354,29 @@ pub fn compare(c: &Connection, from: i64, to: i64) -> Result<Vec<Change>, String
     }
     Ok(out)
 }
-pub fn delete_snapshot(c: &Connection, id: i64) -> Result<(), String> {
-    c.execute("DELETE FROM snapshots WHERE id=?", [id])
-        .map_err(err)?;
+fn delete_orphaned_observations(c: &Connection) -> Result<(), String> {
+    c.execute(
+        "DELETE FROM fame_observations WHERE NOT EXISTS (SELECT 1 FROM fame_run_members WHERE observation_id=fame_observations.id)",
+        [],
+    )
+    .map_err(err)?;
     Ok(())
 }
-pub fn delete_account(c: &Connection, id: i64) -> Result<(), String> {
-    c.execute("DELETE FROM accounts WHERE id=?", [id])
+
+pub fn delete_snapshot(c: &mut Connection, id: i64) -> Result<(), String> {
+    let tx = c.transaction().map_err(err)?;
+    tx.execute("DELETE FROM snapshots WHERE id=?", [id])
         .map_err(err)?;
+    delete_orphaned_observations(&tx)?;
+    tx.commit().map_err(err)?;
+    Ok(())
+}
+pub fn delete_account(c: &mut Connection, id: i64) -> Result<(), String> {
+    let tx = c.transaction().map_err(err)?;
+    tx.execute("DELETE FROM accounts WHERE id=?", [id])
+        .map_err(err)?;
+    delete_orphaned_observations(&tx)?;
+    tx.commit().map_err(err)?;
     Ok(())
 }
 #[cfg(test)]
@@ -286,7 +401,7 @@ mod tests {
         };
         ParsedImport {
             source_name: "test".into(),
-            detected_username: None,
+            detected_username: Some("owner".into()),
             followers: map(f),
             following: map(g),
             warnings: vec![],
@@ -313,10 +428,130 @@ mod tests {
     }
 
     #[test]
+    fn baseline_has_no_change_counts() {
+        let mut c = open(Path::new(":memory:")).unwrap();
+        let snapshot = commit(&mut c, &parsed(&["a", "b"], &["b"], "1"), None, "me").unwrap();
+        let summary = summary(&c, snapshot.account_id, Some(snapshot.id)).unwrap();
+        assert!(!summary.has_previous_snapshot);
+        assert_eq!((summary.new_followers, summary.lost_followers), (0, 0));
+    }
+
+    #[test]
+    fn migrates_v1_and_cascades_fame_runs() {
+        let path = tempfile::NamedTempFile::new().unwrap();
+        let c = Connection::open(path.path()).unwrap();
+        c.execute_batch(
+            "PRAGMA foreign_keys=ON;
+             CREATE TABLE accounts(id INTEGER PRIMARY KEY,label TEXT NOT NULL,username TEXT,created_at TEXT NOT NULL);
+             CREATE TABLE snapshots(id INTEGER PRIMARY KEY,account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,imported_at TEXT NOT NULL,source_name TEXT NOT NULL,state_hash TEXT NOT NULL,followers INTEGER NOT NULL,following INTEGER NOT NULL,UNIQUE(account_id,state_hash));
+             CREATE TABLE relationships(snapshot_id INTEGER NOT NULL REFERENCES snapshots(id) ON DELETE CASCADE,kind TEXT NOT NULL,norm TEXT NOT NULL,username TEXT NOT NULL,profile_url TEXT,source_timestamp INTEGER,PRIMARY KEY(snapshot_id,kind,norm));
+             PRAGMA user_version=1;",
+        )
+        .unwrap();
+        drop(c);
+        let c = open(path.path()).unwrap();
+        assert_eq!(
+            c.pragma_query_value(None, "user_version", |row| row.get::<_, i64>(0))
+                .unwrap(),
+            2
+        );
+        c.execute("INSERT INTO accounts VALUES(1,'me',NULL,'now')", [])
+            .unwrap();
+        c.execute(
+            "INSERT INTO snapshots VALUES(1,1,'now','test','hash',1,1)",
+            [],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO fame_runs(id,snapshot_id,created_at,status,formula_version,refresh_all) VALUES(1,1,'now','pending','fame-v1',0)",
+            [],
+        )
+        .unwrap();
+        c.execute("DELETE FROM snapshots WHERE id=1", []).unwrap();
+        let remaining: i64 = c
+            .query_row("SELECT COUNT(*) FROM fame_runs", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(remaining, 0);
+    }
+
+    #[test]
+    fn deletion_collects_only_unreferenced_observations() {
+        let mut c = open(Path::new(":memory:")).unwrap();
+        let first = commit(&mut c, &parsed(&["a"], &["b"], "1"), None, "me").unwrap();
+        let second = commit(
+            &mut c,
+            &parsed(&["a", "c"], &["b"], "2"),
+            Some(first.account_id),
+            "me",
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO fame_observations(id,norm,followers,following,precision,observed_at,source,corpus_release,authenticated) VALUES(1,'a',10,1,'exact','now','test','r1',1)",
+            [],
+        )
+        .unwrap();
+        for (run, snapshot) in [(1, first.id), (2, second.id)] {
+            c.execute(
+                "INSERT INTO fame_runs(id,snapshot_id,created_at,status,formula_version,refresh_all) VALUES(?,?,'now','completed','fame-v1',0)",
+                params![run, snapshot],
+            )
+            .unwrap();
+            c.execute(
+                "INSERT INTO fame_run_members(run_id,norm,username,status,observation_id) VALUES(?,'a','a','exact',1)",
+                [run],
+            )
+            .unwrap();
+        }
+        delete_snapshot(&mut c, first.id).unwrap();
+        assert_eq!(
+            c.query_row("SELECT COUNT(*) FROM fame_observations", [], |row| row
+                .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+        delete_snapshot(&mut c, second.id).unwrap();
+        assert_eq!(
+            c.query_row("SELECT COUNT(*) FROM fame_observations", [], |row| row
+                .get::<_, i64>(0))
+                .unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn fame_member_precision_must_match_observation() {
+        let mut c = open(Path::new(":memory:")).unwrap();
+        let snapshot = commit(&mut c, &parsed(&["a"], &["b"], "1"), None, "me").unwrap();
+        c.execute(
+            "INSERT INTO fame_observations(id,norm,followers,following,precision,observed_at,source,corpus_release,authenticated) VALUES(1,'a',10,1,'approximate','now','test','r1',1)",
+            [],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO fame_runs(id,snapshot_id,created_at,status,formula_version,refresh_all) VALUES(1,?,'now','completed','fame-v1',0)",
+            [snapshot.id],
+        )
+        .unwrap();
+        let mismatch = c.execute(
+            "INSERT INTO fame_run_members(run_id,norm,username,status,observation_id) VALUES(1,'a','a','exact',1)",
+            [],
+        );
+        assert!(mismatch.is_err());
+        c.execute(
+            "INSERT INTO fame_run_members(run_id,norm,username,status,observation_id) VALUES(1,'a','a','approximate',1)",
+            [],
+        )
+        .unwrap();
+    }
+
+    #[test]
     #[ignore = "requires INSIGHT_REAL_EXPORT to point to a private local export"]
     fn imports_real_export_through_sqlite() {
         let source = std::env::var("INSIGHT_REAL_EXPORT").expect("INSIGHT_REAL_EXPORT is required");
-        let parsed = parser::parse_path(Path::new(&source)).expect("real export should parse");
+        let mut parsed = parser::parse_path(Path::new(&source)).expect("real export should parse");
+        if parsed.detected_username.is_none() {
+            parsed.detected_username = Some("e2e_owner".into());
+        }
         let expected_followers = parsed.followers.len();
         let expected_following = parsed.following.len();
         let dir = tempfile::tempdir().expect("temporary directory should be available");

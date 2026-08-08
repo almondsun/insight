@@ -30,6 +30,7 @@ pub struct Summary {
     pub followers_not_followed_back: usize,
     pub new_followers: usize,
     pub lost_followers: usize,
+    pub has_previous_snapshot: bool,
 }
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -55,6 +56,16 @@ pub struct ImportPreview {
     pub followers: usize,
     pub following: usize,
     pub warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FameFoundationStatus {
+    pub implementation_stage: &'static str,
+    pub formula_version: &'static str,
+    pub protocol_schema_version: u32,
+    pub fixed_corpus_record_bytes: usize,
+    pub network_retrieval_available: bool,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Person {

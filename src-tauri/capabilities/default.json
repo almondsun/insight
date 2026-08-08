@@ -1,1 +1,1 @@
-{"identifier":"default","description":"Default desktop permissions","windows":["main"],"permissions":["core:default","dialog:allow-open","dialog:allow-save"]}
+{"identifier":"default","description":"Default desktop permissions","windows":["main"],"permissions":["core:default"]}
