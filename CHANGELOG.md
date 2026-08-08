@@ -4,6 +4,12 @@ All notable user-visible changes to insIGht are documented here. The project fol
 
 ## [Unreleased]
 
+### Documentation
+
+- Added task-based installation, user, privacy, troubleshooting, architecture, support, and roadmap documentation
+- Added a versioned source of truth for GitHub About metadata and repository topics
+- Clarified current platform artifacts, unsigned-install limitations, supported ZIP/folder imports, and the unavailable Fame roadmap boundary
+
 ## [0.1.1] - 2026-07-11
 
 ### Fixed

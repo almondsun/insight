@@ -1,70 +1,88 @@
 <div align="center">
   <img src="src-tauri/icons/icon.png" alt="insIGht eye logo" width="128" height="128">
   <h1>insIGht</h1>
-  <p><strong>Private, local-first Instagram relationship analytics.</strong></p>
-  <p>Understand followers, mutuals, non-reciprocal relationships, and changes over time without connecting your Instagram account.</p>
+  <p><strong>See who follows you, who does not, and what changed—without connecting your Instagram account.</strong></p>
+  <p>insIGht is a local-first desktop app for exploring official Instagram JSON exports.</p>
 
+  [![Latest release](https://img.shields.io/github/v/release/almondsun/insight?display_name=tag&sort=semver)](https://github.com/almondsun/insight/releases/latest)
   [![CI](https://github.com/almondsun/insight/actions/workflows/ci.yml/badge.svg)](https://github.com/almondsun/insight/actions/workflows/ci.yml)
   [![CodeQL](https://github.com/almondsun/insight/actions/workflows/codeql.yml/badge.svg)](https://github.com/almondsun/insight/actions/workflows/codeql.yml)
   [![License: MIT](https://img.shields.io/badge/license-MIT-e1306c.svg)](LICENSE)
-  [![Tauri 2](https://img.shields.io/badge/Tauri-2-833ab4.svg)](https://v2.tauri.app/)
+
+  [Download insIGht](https://github.com/almondsun/insight/releases/latest) · [Read the docs](docs/README.md) · [Get support](SUPPORT.md)
 </div>
 
-![insIGht import screen](docs/assets/insight-preview.png)
+![The insIGht desktop import screen](docs/assets/insight-preview.png)
 
-## What It Does
+> [!IMPORTANT]
+> These docs follow the hardened code on `main`. The latest v0.1.1 binaries predate native-only path mediation, required owner confirmation, complete-export enforcement, and the newest folder limits. See the [version differences](docs/GETTING_STARTED.md#version-differences) before installing v0.1.1.
 
-insIGht turns Instagram's official **Download Your Information** JSON archive into a searchable desktop dashboard. It never asks for an Instagram password, uses no scraping or unofficial API, and does not upload relationship data.
+## Your Instagram relationships, made understandable
 
-| Capability | Description |
-| --- | --- |
-| Relationship dashboard | Followers, following, mutuals, not-following-back, and followers you do not follow |
-| Snapshot history | Track multiple imports and identify additions or removals between snapshots |
-| Searchable lists | Find accounts quickly across each relationship category |
-| Multi-account support | Keep separate local histories for different Instagram accounts |
-| Reports | Export normalized relationship lists as CSV or JSON |
-| Local persistence | Store parsed snapshots in SQLite in the operating system's application-data directory |
+Instagram gives you a copy of your information, but not an easy way to explore it. insIGht turns the follower and following files in that official export into a searchable desktop dashboard.
 
-## Privacy By Design
+| Explore | Compare | Keep control |
+| --- | --- | --- |
+| Browse followers, following, mutuals, and non-reciprocal relationships. | Import snapshots over time to see additions and removals. | Keep archives and analytics on your device, with no Instagram login or telemetry. |
 
-- **No Instagram login:** insIGht imports files you explicitly select.
-- **No network dependency:** analytics and persistence run locally.
-- **No telemetry:** the application does not track usage.
-- **No archive retention:** source ZIP files are read in place and are not copied into app storage.
-- **Minimal parsing:** only relationship files and owner metadata are read from a full export.
-- **Defensive imports:** archive paths, file counts, individual sizes, and aggregate decompressed sizes are validated.
+### How it works
 
-The local database and exported reports can contain personal information. They rely on your operating-system account and disk protection; database encryption is not currently included.
+1. Request your information from Instagram Accounts Center in **JSON** format.
+2. Import the complete ZIP or extracted export folder into insIGht.
+3. Search relationships, compare snapshots, and export selected lists as CSV or JSON.
 
-## Getting Instagram Data
+[Start with the installation and import guide →](docs/GETTING_STARTED.md)
 
-1. Open Instagram **Accounts Center**.
-2. Choose **Your information and permissions**.
-3. Select **Download your information** and the Instagram account to export.
-4. Choose **JSON** as the format. HTML exports are not supported.
-5. Download the ZIP, then choose **Import file** in insIGht. Extracted export folders are also supported.
+## Features
 
-Instagram exports are snapshots, not event logs. A gained or lost relationship is known only to have changed between two imports. Instagram also does not reliably include stable numeric account IDs, so a username change can appear as one removal and one addition.
+- Followers, following, mutuals, accounts that do not follow you back, and followers you do not follow.
+- Search across each relationship category.
+- Separate histories for multiple Instagram accounts.
+- Snapshot comparisons that show additions and removals between imports.
+- CSV and JSON reports saved through the operating system's native file dialog.
+- Defensive ZIP and folder parsing with path, file-count, and decompressed-size limits.
+- Local SQLite persistence in the operating system's application-data directory.
 
-## Installation
+## Privacy, without vague promises
 
-### Releases
+The current `main` application does not log in to Instagram, scrape profiles, upload archives, use telemetry, or require a network connection for analytics. Rust owns file access and archive parsing; the WebView cannot choose arbitrary filesystem paths. The downloadable v0.1.1 release preserves the no-login, no-scraping, no-upload, and no-telemetry boundary, but predates the current native path mediation and stricter import validation.
 
-When a version is available, download its desktop installers from the [GitHub Releases page](https://github.com/almondsun/insight/releases). If no release is listed yet, build from source using the development instructions below. Review each release's notes for signing status and platform-specific limitations.
+Your local database and exported reports can still contain personal information. insIGht does not currently encrypt its database, so protection depends on your operating-system account and disk security.
 
-Supported release targets:
+[Read the complete privacy and data-boundary documentation →](docs/PRIVACY.md)
 
-- Windows
-- macOS
-- Linux
+## Downloads
 
-## Development
+Version 0.1.1 provides these unsigned preview builds:
 
-### Prerequisites
+| Platform | Current artifact choices | Architecture |
+| --- | --- | --- |
+| Windows | MSI or setup EXE | x86-64 |
+| macOS | DMG | Apple Silicon |
+| Linux | AppImage, DEB, or RPM | x86-64 |
 
-- Node.js 22 or newer
-- Rust stable
-- [Tauri 2 platform prerequisites](https://v2.tauri.app/start/prerequisites/)
+The installers are not code-signed or notarized. Windows and macOS may display an unknown-developer warning. Review the release notes and verify the SHA-256 digest shown by GitHub before installing.
+
+[Download the latest release →](https://github.com/almondsun/insight/releases/latest)
+
+## Fame roadmap
+
+Fame is a proposed optional ranking feature based on public follower and following counts. Its scoring and synthetic test foundations exist, but **Fame retrieval and its user workflow are not implemented or available**. The research design requires a licensed query-independent corpus, independently operated PIR replicas, mixed request and reply paths, fixed cover traffic, witnessed releases, reproducible measurements, and independent audits. It forbids direct Instagram access and fallback transport.
+
+[Read the roadmap](docs/ROADMAP.md) · [Review the Fame engineering status](docs/fame/README.md)
+
+## Documentation
+
+- [Getting started](docs/GETTING_STARTED.md)
+- [User guide](docs/USER_GUIDE.md)
+- [Privacy and data handling](docs/PRIVACY.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Development and contributing](CONTRIBUTING.md)
+
+## Build from source
+
+You need Node.js 22 or newer, stable Rust, and the [Tauri 2 platform prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 git clone https://github.com/almondsun/insight.git
@@ -73,58 +91,22 @@ npm ci
 npm run tauri dev
 ```
 
-The standalone Vite server is useful for interface work, but imports, native dialogs, SQLite persistence, and exports require the Tauri runtime.
-
-### Validation
-
-Run the complete local CI-equivalent check:
+Run the complete local CI-equivalent validation with:
 
 ```bash
 npm run check
 ```
 
-This runs the frontend production build, Rust formatting check, strict Clippy analysis, and Rust tests. Production dependencies are audited separately in CI with `npm audit --omit=dev`.
+The standalone Vite server is useful for interface work, but native dialogs, archive imports, SQLite persistence, and exports require the Tauri runtime.
 
-## Architecture
+## Support and community
 
-```text
-Instagram JSON ZIP/folder
-          |
-          v
-  Rust import boundary ---- path and decompression limits
-          |
-          v
- Normalized snapshots ---- SQLite in OS app-data storage
-          |
-          v
- Tauri commands/events ---- typed TypeScript client
-          |
-          v
- React desktop interface -- dashboard, lists, history, exports
-```
+Use [GitHub Discussions](https://github.com/almondsun/insight/discussions) for questions, the structured [issue forms](https://github.com/almondsun/insight/issues/new/choose) for reproducible bugs or feature proposals, and the private process in [SECURITY.md](SECURITY.md) for vulnerabilities. Never publish a real Instagram export, username list, SQLite database, or login secret.
 
-- **React + TypeScript** renders the interface and manages query state.
-- **Tauri + Rust** owns filesystem access, archive parsing, validation, reports, and native dialogs.
-- **SQLite** stores accounts, immutable snapshots, and normalized relationships.
-- Derived categories are computed from follower/following sets instead of persisted redundantly.
+## Independent project
 
-## Current Limitations
-
-- Only official Instagram JSON exports are supported.
-- Relationship changes are inferred between snapshots; exact change times are unavailable.
-- Username changes cannot always be matched to the same person.
-- The local database is not encrypted by insIGht.
-- Installers are not yet code-signed or notarized.
-- insIGht does not automate follows, unfollows, messaging, or other Instagram actions.
-
-## Release Process
-
-Version tags build draft installers through GitHub Actions. Maintainers verify each platform artifact before publishing it with release notes; see [the release guide](docs/RELEASING.md).
-
-## Contributing
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use the structured issue forms for bugs and feature proposals. Security reports must follow [SECURITY.md](SECURITY.md) and should never include a real Instagram export or personal account data.
+insIGht is not affiliated with, authorized, maintained, or endorsed by Instagram or Meta. Instagram is a trademark of its respective owner. This project reads export files that a user obtains through Instagram's official data-download feature.
 
 ## License
 
-Licensed under the [MIT License](LICENSE).
+insIGht is available under the [MIT License](LICENSE).
