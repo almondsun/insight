@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "pir": {
+    "repository": "https://github.com/google/distributed_point_functions.git",
+    "commit": "859cafa71fc1e139c7b76d4d4c0f23438688a8ad",
+    "bazel": "8.4.2",
+    "bazelisk": "1.27.0",
+    "bazeliskLinuxAmd64Sha256": "e1508323f347ad1465a887bc5d2bfb91cffc232d11e8e997b623227c6b32fb76",
+    "gccContainer": "gcc:14-bookworm",
+    "containerDigest": "sha256:5e927c284bf55a7dc796262e311a0703344f62f41f5621eb56843111b1d37e15"
+  },
+  "mixnet": {
+    "primary": "https://github.com/katzenpost/katzenpost",
+    "comparison": "https://github.com/nymtech/nym",
+    "commits": "UNRESOLVED_REQUIRES_EXPERIMENT_FREEZE"
+  },
+  "productionApproved": false
+}

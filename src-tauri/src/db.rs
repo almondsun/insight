@@ -82,6 +82,23 @@ pub fn accounts(c: &Connection) -> Result<Vec<Account>, String> {
         .map_err(err);
     rows
 }
+pub fn rename_account(c: &Connection, id: i64, label: &str) -> Result<Account, String> {
+    let label = label.trim();
+    if label.is_empty() || label.chars().count() > 80 {
+        return Err("Account label must contain between 1 and 80 characters".into());
+    }
+    if c.execute("UPDATE accounts SET label=? WHERE id=?", params![label, id])
+        .map_err(err)?
+        == 0
+    {
+        return Err("Account no longer exists".into());
+    }
+    c.query_row(
+        "SELECT a.id,a.label,a.username,COUNT(s.id) FROM accounts a LEFT JOIN snapshots s ON s.account_id=a.id WHERE a.id=? GROUP BY a.id",
+        [id],
+        |r| Ok(Account { id: r.get(0)?, label: r.get(1)?, username: r.get(2)?, snapshot_count: r.get(3)? }),
+    ).map_err(err)
+}
 pub fn snapshots(c: &Connection, account: i64) -> Result<Vec<Snapshot>, String> {
     let mut q=c.prepare("SELECT id,account_id,imported_at,source_name,followers,following FROM snapshots WHERE account_id=? ORDER BY imported_at DESC,id DESC").map_err(err)?;
     let rows = q
@@ -365,16 +382,26 @@ fn delete_orphaned_observations(c: &Connection) -> Result<(), String> {
 
 pub fn delete_snapshot(c: &mut Connection, id: i64) -> Result<(), String> {
     let tx = c.transaction().map_err(err)?;
-    tx.execute("DELETE FROM snapshots WHERE id=?", [id])
-        .map_err(err)?;
+    if tx
+        .execute("DELETE FROM snapshots WHERE id=?", [id])
+        .map_err(err)?
+        == 0
+    {
+        return Err("Snapshot no longer exists".into());
+    }
     delete_orphaned_observations(&tx)?;
     tx.commit().map_err(err)?;
     Ok(())
 }
 pub fn delete_account(c: &mut Connection, id: i64) -> Result<(), String> {
     let tx = c.transaction().map_err(err)?;
-    tx.execute("DELETE FROM accounts WHERE id=?", [id])
-        .map_err(err)?;
+    if tx
+        .execute("DELETE FROM accounts WHERE id=?", [id])
+        .map_err(err)?
+        == 0
+    {
+        return Err("Account no longer exists".into());
+    }
     delete_orphaned_observations(&tx)?;
     tx.commit().map_err(err)?;
     Ok(())
@@ -434,6 +461,34 @@ mod tests {
         let summary = summary(&c, snapshot.account_id, Some(snapshot.id)).unwrap();
         assert!(!summary.has_previous_snapshot);
         assert_eq!((summary.new_followers, summary.lost_followers), (0, 0));
+    }
+
+    #[test]
+    fn validates_account_and_snapshot_mutation_targets() {
+        let mut c = open(Path::new(":memory:")).unwrap();
+        let snapshot = commit(&mut c, &parsed(&["a"], &["b"], "1"), None, "me").unwrap();
+        assert!(rename_account(&c, snapshot.account_id, "").is_err());
+        assert!(rename_account(&c, snapshot.account_id, &"x".repeat(81)).is_err());
+        assert_eq!(
+            rename_account(&c, snapshot.account_id, " Renamed ")
+                .unwrap()
+                .label,
+            "Renamed"
+        );
+        assert!(rename_account(&c, 999, "missing").is_err());
+        assert!(delete_snapshot(&mut c, 999).is_err());
+        assert!(delete_account(&mut c, 999).is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_query_targets() {
+        let mut c = open(Path::new(":memory:")).unwrap();
+        let first = commit(&mut c, &parsed(&["a"], &["b"], "1"), None, "one").unwrap();
+        let second = commit(&mut c, &parsed(&["c"], &["d"], "2"), None, "two").unwrap();
+        assert!(relationships(&c, first.id, "unknown", "").is_err());
+        assert!(relationships(&c, 999, "followers", "").is_err());
+        assert!(summary(&c, first.account_id, Some(second.id)).is_err());
+        assert!(compare(&c, first.id, second.id).is_err());
     }
 
     #[test]

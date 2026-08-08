@@ -39,11 +39,11 @@ At startup, Tauri resolves the operating system's application-data directory and
 
 Mutuals and non-reciprocal categories are derived from follower and following membership. Snapshot hashes are based on normalized membership so equivalent imports are detected as duplicates.
 
-The schema also contains immutable Fame runs, memberships, and authenticated observation foundations. Their retrieval orchestration is unavailable; account and snapshot deletion still applies the defined cascades and unreferenced-observation cleanup.
+The schema also contains immutable Fame runs, memberships, and observation foundations with an authentication-state field. No cryptographic observation verifier or retrieval orchestration is implemented; account and snapshot deletion still applies the defined cascades and unreferenced-observation cleanup.
 
 ## Tauri interface
 
-The native command surface exposes account and snapshot queries, import preview/commit/cancel, summaries, relationship lists, comparisons, deletion, native report export, and a read-only Fame foundation status.
+The native command surface exposes account and snapshot queries, account rename/delete, import preview/commit/cancel, summaries, relationship lists, comparisons, snapshot deletion, native relationship/change report export, and a read-only Fame foundation status.
 
 TypeScript models mirror serialized Rust responses. Network access is not exposed to the WebView. The current content security policy permits local application resources and Tauri IPC.
 
@@ -51,7 +51,7 @@ TypeScript models mirror serialized Rust responses. Network access is not expose
 
 React and TanStack Query manage server-state caching and mutations. Presentation helpers own user-facing matching and display transformations; native code remains authoritative for filesystem, archive, persistence, and validation behavior.
 
-The interface currently compares the two newest snapshots in the selected account and exports the active relationship category.
+The interface compares a selected snapshot with its immediately prior import. Export behavior follows the current list or change view.
 
 ## Validation
 

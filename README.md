@@ -15,7 +15,7 @@
 ![The insIGht desktop import screen](docs/assets/insight-preview.png)
 
 > [!IMPORTANT]
-> These docs follow the hardened code on `main`. The latest v0.1.1 binaries predate native-only path mediation, required owner confirmation, complete-export enforcement, and the newest folder limits. See the [version differences](docs/GETTING_STARTED.md#version-differences) before installing v0.1.1.
+> The hardened workflow is available in the unsigned [v0.2.0-preview.1 prerelease](https://github.com/almondsun/insight/releases/tag/v0.2.0-preview.1). The stable-release link still resolves to v0.1.1, which predates these boundaries.
 
 ## Your Instagram relationships, made understandable
 
@@ -39,13 +39,14 @@ Instagram gives you a copy of your information, but not an easy way to explore i
 - Search across each relationship category.
 - Separate histories for multiple Instagram accounts.
 - Snapshot comparisons that show additions and removals between imports.
+- Historical snapshot selection, account rename/delete, and change-report export.
 - CSV and JSON reports saved through the operating system's native file dialog.
 - Defensive ZIP and folder parsing with path, file-count, and decompressed-size limits.
 - Local SQLite persistence in the operating system's application-data directory.
 
 ## Privacy, without vague promises
 
-The current `main` application does not log in to Instagram, scrape profiles, upload archives, use telemetry, or require a network connection for analytics. Rust owns file access and archive parsing; the WebView cannot choose arbitrary filesystem paths. The downloadable v0.1.1 release preserves the no-login, no-scraping, no-upload, and no-telemetry boundary, but predates the current native path mediation and stricter import validation.
+The v0.2 preview application does not log in to Instagram, scrape profiles, upload archives, use telemetry, or require a network connection for analytics. Rust owns file access and archive parsing; the WebView cannot choose arbitrary filesystem paths. The downloadable v0.1.1 release preserves the no-login, no-scraping, no-upload, and no-telemetry boundary, but predates the current native path mediation and stricter import validation.
 
 Your local database and exported reports can still contain personal information. insIGht does not currently encrypt its database, so protection depends on your operating-system account and disk security.
 
@@ -53,7 +54,7 @@ Your local database and exported reports can still contain personal information.
 
 ## Downloads
 
-Version 0.1.1 provides these unsigned preview builds:
+Version 0.2.0-preview.1 provides unsigned builds and a release-wide `SHA256SUMS` file:
 
 | Platform | Current artifact choices | Architecture |
 | --- | --- | --- |
@@ -63,11 +64,11 @@ Version 0.1.1 provides these unsigned preview builds:
 
 The installers are not code-signed or notarized. Windows and macOS may display an unknown-developer warning. Review the release notes and verify the SHA-256 digest shown by GitHub before installing.
 
-[Download the latest release →](https://github.com/almondsun/insight/releases/latest)
+[Download the v0.2 preview →](https://github.com/almondsun/insight/releases/tag/v0.2.0-preview.1)
 
 ## Fame roadmap
 
-Fame is a proposed optional ranking feature based on public follower and following counts. Its scoring and synthetic test foundations exist, but **Fame retrieval and its user workflow are not implemented or available**. The research design requires a licensed query-independent corpus, independently operated PIR replicas, mixed request and reply paths, fixed cover traffic, witnessed releases, reproducible measurements, and independent audits. It forbids direct Instagram access and fallback transport.
+Fame is a proposed optional ranking feature based on public follower and following counts. Its scoring, synthetic test foundations, lab CLI, and read-only status view exist, but **Fame retrieval and ranking are not available**. The research design requires a licensed query-independent corpus, independently operated PIR replicas, mixed request and reply paths, fixed cover traffic, witnessed releases, reproducible measurements, and independent audits. It forbids direct Instagram access and fallback transport.
 
 [Read the roadmap](docs/ROADMAP.md) · [Review the Fame engineering status](docs/fame/README.md)
 

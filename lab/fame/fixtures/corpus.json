@@ -1,0 +1,5 @@
+[
+  {"username":"synthetic_alice","followers":1200,"following":100,"precision":"exact","observedAt":"2026-01-01T00:00:00Z","status":"available"},
+  {"username":"synthetic_bob","followers":null,"following":null,"precision":null,"observedAt":"2026-01-01T00:00:00Z","status":"private"},
+  {"username":"synthetic_carol","followers":2400,"following":800,"precision":"approximate","observedAt":"2026-01-01T00:00:00Z","status":"available"}
+]

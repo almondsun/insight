@@ -2,9 +2,10 @@
 
 Status: architecture frozen; feasibility not established
 
-Fame is a proposed optional enrichment feature. Its versioned scoring core and
-database foundation are implemented, but no Fame retrieval or user-facing run
-workflow exists and the current insIGht application remains offline. These
+Fame is a proposed optional enrichment feature. Its reusable versioned scoring
+core, database foundation, synthetic lab CLI, and read-only product status view
+are implemented, but no Fame retrieval or user-facing run workflow exists and
+the current insIGht application remains offline. These
 documents define gates that must pass before any Fame networking can be
 considered for experimental use.
 

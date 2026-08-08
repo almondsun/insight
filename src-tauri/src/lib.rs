@@ -1,10 +1,7 @@
-pub mod agent;
-pub mod corpus;
 mod db;
-pub mod fame;
 mod model;
 mod parser;
-pub mod protocol;
+pub use fame_core::{agent, corpus, fame, protocol};
 use model::*;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
@@ -50,6 +47,10 @@ fn compare_snapshots(
 ) -> Result<Vec<Change>, String> {
     db::compare(&s.db.lock().unwrap(), from_snapshot_id, to_snapshot_id)
 }
+#[tauri::command]
+fn rename_account(account_id: i64, label: String, s: State<AppState>) -> Result<Account, String> {
+    db::rename_account(&s.db.lock().unwrap(), account_id, &label)
+}
 
 #[tauri::command]
 fn get_fame_foundation_status() -> FameFoundationStatus {
@@ -59,6 +60,21 @@ fn get_fame_foundation_status() -> FameFoundationStatus {
         protocol_schema_version: protocol::PROTOCOL_SCHEMA_VERSION,
         fixed_corpus_record_bytes: corpus::FIXED_RECORD_BYTES,
         network_retrieval_available: false,
+        architecture_status: "frozen",
+        next_stage: "formal_threat_model_and_feasibility_validation",
+        completed_foundations: vec![
+            "versioned fame-v1 scoring",
+            "fixed-size committed synthetic corpus records",
+            "query-independent scheduler model",
+            "frozen threat model and experiment specifications",
+        ],
+        blocked_gates: vec![
+            "licensed query-independent corpus provider",
+            "audited two-server PIR deployment with independent operators",
+            "qualified mixed request and reply paths",
+            "witnessed governance and fresh-time infrastructure",
+            "preregistered traffic-analysis thresholds and independent audit",
+        ],
     }
 }
 fn store_preview(parsed: ParsedImport, s: State<AppState>) -> ImportPreview {
@@ -187,27 +203,87 @@ async fn export_report(
         return Ok(false);
     };
     let path = selected.into_path().map_err(|e| e.to_string())?;
-    if format == "json" {
-        let body = serde_json::json!({"schemaVersion":1,"generatedAt":chrono::Utc::now().to_rfc3339(),"snapshotId":snapshot_id,"category":kind,"relationships":rows});
-        std::fs::write(
-            path,
-            serde_json::to_vec_pretty(&body).map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())?;
-    } else {
-        let mut w = csv::Writer::from_path(path).map_err(|e| e.to_string())?;
-        w.write_record(["username", "profile_url", "category"])
-            .map_err(|e| e.to_string())?;
-        for x in rows {
-            w.write_record([
-                csv_safe(x.username),
-                csv_safe(x.profile_url.unwrap_or_default()),
-                csv_safe(x.kind),
-            ])
-            .map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        if format == "json" {
+            let body = serde_json::json!({"schemaVersion":1,"generatedAt":chrono::Utc::now().to_rfc3339(),"snapshotId":snapshot_id,"category":kind,"relationships":rows});
+            std::fs::write(path, serde_json::to_vec_pretty(&body).map_err(|e| e.to_string())?)
+                .map_err(|e| e.to_string())?;
+        } else {
+            let mut w = csv::Writer::from_path(path).map_err(|e| e.to_string())?;
+            w.write_record(["username", "profile_url", "category"])
+                .map_err(|e| e.to_string())?;
+            for x in rows {
+                w.write_record([
+                    csv_safe(x.username),
+                    csv_safe(x.profile_url.unwrap_or_default()),
+                    csv_safe(x.kind),
+                ])
+                .map_err(|e| e.to_string())?;
+            }
+            w.flush().map_err(|e| e.to_string())?;
         }
-        w.flush().map_err(|e| e.to_string())?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(true)
+}
+
+#[tauri::command]
+async fn export_changes(
+    from_snapshot_id: i64,
+    to_snapshot_id: i64,
+    category: String,
+    format: String,
+    app: tauri::AppHandle,
+    s: State<'_, AppState>,
+) -> Result<bool, String> {
+    if format != "json" && format != "csv" {
+        return Err("Unsupported export format".into());
     }
+    if !matches!(
+        category.as_str(),
+        "followers"
+            | "following"
+            | "mutuals"
+            | "not_following_back"
+            | "followers_not_followed_back"
+    ) {
+        return Err("Unsupported relationship category".into());
+    }
+    let rows = db::compare(&s.db.lock().unwrap(), from_snapshot_id, to_snapshot_id)?
+        .into_iter()
+        .filter(|change| change.category == category)
+        .collect::<Vec<_>>();
+    let extension = format.clone();
+    let default_name = format!("insight-changes-{category}.{format}");
+    let selected = tauri::async_runtime::spawn_blocking(move || {
+        app.dialog()
+            .file()
+            .add_filter(extension.to_uppercase(), &[extension.as_str()])
+            .set_file_name(default_name)
+            .blocking_save_file()
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    let Some(selected) = selected else {
+        return Ok(false);
+    };
+    let path = selected.into_path().map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        if format == "json" {
+            let body = serde_json::json!({"schemaVersion":1,"generatedAt":chrono::Utc::now().to_rfc3339(),"fromSnapshotId":from_snapshot_id,"toSnapshotId":to_snapshot_id,"category":category,"changes":rows});
+            std::fs::write(path, serde_json::to_vec_pretty(&body).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        } else {
+            let mut w = csv::Writer::from_path(path).map_err(|e| e.to_string())?;
+            w.write_record(["username", "profile_url", "category", "direction"]).map_err(|e| e.to_string())?;
+            for x in rows {
+                w.write_record([csv_safe(x.username), csv_safe(x.profile_url.unwrap_or_default()), csv_safe(x.category), csv_safe(x.direction)]).map_err(|e| e.to_string())?;
+            }
+            w.flush().map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }).await.map_err(|e| e.to_string())??;
     Ok(true)
 }
 
@@ -242,14 +318,30 @@ pub fn run() {
             get_summary,
             get_relationships,
             compare_snapshots,
+            rename_account,
             get_fame_foundation_status,
             choose_import,
             commit_import,
             cancel_import,
             delete_snapshot,
             delete_account,
-            export_report
+            export_report,
+            export_changes
         ])
         .run(tauri::generate_context!())
         .expect("failed to run insIGht")
+}
+
+#[cfg(test)]
+mod export_tests {
+    use super::csv_safe;
+
+    #[test]
+    fn neutralizes_spreadsheet_formulas() {
+        for prefix in ['=', '+', '-', '@', '\t', '\r'] {
+            let value = format!("{prefix}danger");
+            assert_eq!(csv_safe(value.clone()), format!("'{value}"));
+        }
+        assert_eq!(csv_safe("safe_user".into()), "safe_user");
+    }
 }

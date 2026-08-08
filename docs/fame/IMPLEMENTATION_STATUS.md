@@ -4,7 +4,9 @@ Status: synthetic foundation; production retrieval disabled
 
 Implemented in the application repository:
 
-- `fame-v1` scoring, authenticated ranking, provenance, and deterministic ties.
+- `fame-v1` scoring, provenance, deterministic ties, and ranking that rejects
+  observations not marked authenticated. Cryptographic authentication is not
+  implemented.
 - Versioned immutable Fame run, membership, and observation persistence.
 - Compatibility-tuple, representable-geometry, and epoch staging domain models.
 - Deterministic 64-byte synthetic corpus records with validated,
@@ -12,6 +14,10 @@ Implemented in the application repository:
 - A laboratory slot-count scheduler that rejects replayed epochs, never catches
   up missed slots, and suspends on excessive timing uncertainty.
 - A typed status command that always reports network retrieval unavailable.
+- A reusable `fame-core` crate and synthetic-only `fame-lab` CLI for corpus,
+  scheduler, prerequisite, bootstrap, platform, PIR, mixnet, traffic, and
+  evidence checks. External prerequisites report `BLOCKED` explicitly.
+- A read-only product roadmap view with no retrieval controls.
 
 Not implemented or approved:
 

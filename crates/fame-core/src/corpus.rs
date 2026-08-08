@@ -84,9 +84,9 @@ impl SyntheticCorpusRelease {
         }
         for (expected_index, record) in self.records.iter().enumerate() {
             if record.index != expected_index as u64
-                || !crate::parser::is_valid_username(&record.normalized_username)
+                || !crate::identity::is_valid_username(&record.normalized_username)
                 || record.normalized_username
-                    != crate::parser::normalize(&record.normalized_username)
+                    != crate::identity::normalize(&record.normalized_username)
             {
                 return Err("Corpus record ordering or identity is invalid".into());
             }
@@ -119,7 +119,7 @@ pub fn build_synthetic_release(
     let mut normalized = BTreeMap::new();
     for record in records {
         let username = record.username.trim().to_lowercase();
-        if !crate::parser::is_valid_username(&username) {
+        if !crate::identity::is_valid_username(&username) {
             return Err("Corpus contains an invalid username".into());
         }
         if normalized.insert(username, record).is_some() {
