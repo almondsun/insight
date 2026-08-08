@@ -40,8 +40,13 @@ jobs:
           [[ "$EXPECTED_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-preview\.[0-9]+)?$ ]]
           EXPECTED_VERSION="${EXPECTED_VERSION#v}" node -e "const p=require('./package.json'); if(p.version !== process.env.EXPECTED_VERSION) process.exit(1)"
           expected="${EXPECTED_VERSION#v}"
+          bundle_version="$expected"
+          if [[ "$expected" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-preview\.([0-9]+)$ ]]; then
+            test "${BASH_REMATCH[2]}" -le 65535
+            bundle_version="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
+          fi
           grep -F "version=\"$expected\"" src-tauri/Cargo.toml
-          grep -F "\"version\":\"$expected\"" src-tauri/tauri.conf.json
+          grep -F "\"version\":\"$bundle_version\"" src-tauri/tauri.conf.json
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: >-

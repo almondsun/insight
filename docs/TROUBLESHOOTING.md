@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Start by confirming your version and that you have a complete Instagram export in JSON format. The stable release is v0.1.1; the v0.2.0-preview.1 prerelease contains the stricter import hardening described in [version differences](GETTING_STARTED.md#version-differences).
+Start by confirming your version and that you have a complete Instagram export in JSON format. The stable release is v0.1.1; the v0.2.0-preview.2 prerelease contains the stricter import hardening described in [version differences](GETTING_STARTED.md#version-differences).
 
 ## The file picker does not show my export
 

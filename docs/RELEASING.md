@@ -7,7 +7,7 @@ GitHub Releases are the distribution channel for versioned desktop installers.
 - Verify import, persistence, search, comparison, deletion, and export workflows with sanitized fixtures.
 - Build and launch the application on Windows, macOS, and Linux.
 - Decide whether unsigned preview builds are acceptable or configure platform signing.
-- Confirm the version matches in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`.
+- Confirm the public version matches in `package.json` and `src-tauri/Cargo.toml`. For `vX.Y.Z-preview.N`, set the Tauri bundle version to the Windows-compatible `X.Y.Z-N`; the release workflow verifies this mapping.
 - Prepare concise release notes with user-visible changes, known limitations, and upgrade notes.
 - Verify the platform and architecture table in [Getting Started](GETTING_STARTED.md) against the actual release assets.
 - Verify that [GitHub repository metadata](GITHUB_METADATA.md) still matches the live About panel.
@@ -18,8 +18,8 @@ GitHub Releases are the distribution channel for versioned desktop installers.
 2. Create and push a semantic version tag:
 
    ```bash
-   git tag -a v0.2.0-preview.1 -m "insIGht 0.2.0-preview.1"
-   git push origin v0.2.0-preview.1
+   git tag -a v0.2.0-preview.2 -m "insIGht 0.2.0-preview.2"
+   git push origin v0.2.0-preview.2
    ```
 
 3. The `Release` GitHub Actions workflow builds artifacts on Windows, macOS, and Linux.
@@ -42,6 +42,6 @@ Use semantic versioning:
 - Minor: compatible features
 - Major: incompatible persisted-data, import, report, CLI, or public interface changes
 
-Pre-release tags such as `v0.2.0-preview.1` are published automatically only
+Pre-release tags such as `v0.2.0-preview.2` are published automatically only
 after the cross-platform build and checksum finalizer pass. Preview artifacts
 remain unsigned until signing credentials are configured and verified.
