@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "fame-core"
-version = "0.2.0-preview.1"
+version = "0.2.0-preview.2"
 dependencies = [
  "chrono",
  "serde",

@@ -1,6 +1,6 @@
 [package]
 name = "fame-core"
-version = "0.2.0-preview.1"
+version = "0.2.0-preview.2"
 edition = "2021"
 license = "MIT"
 description = "Network-independent Fame scoring and protocol foundations for insIGht"
