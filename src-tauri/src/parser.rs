@@ -280,6 +280,10 @@ fn canonical_profile_url(value: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+
+    const FOLLOWERS: &[u8] = br#"[{"string_list_data":[{"href":"https://instagram.com/synthetic_alice","value":"synthetic_alice","timestamp":1}]}]"#;
+    const FOLLOWING: &[u8] = br#"{"relationships_following":[{"title":"synthetic_bob","string_list_data":[{"href":"https://instagram.com/synthetic_bob","timestamp":2}]}]}"#;
     #[test]
     fn parses_common_shapes() {
         let a=br#"[{"string_list_data":[{"href":"https://instagram.com/Alice","value":"Alice","timestamp":1}]}]"#.to_vec();
@@ -340,6 +344,39 @@ mod tests {
         )));
         assert!(!is_import_candidate(Path::new("media/photo.jpg")));
         assert!(!is_import_candidate(Path::new("unrelated/following.json")));
+    }
+
+    #[test]
+    fn parses_complete_folder_and_zip_end_to_end() {
+        let dir = tempfile::tempdir().unwrap();
+        let relationships = dir.path().join("connections/followers_and_following");
+        std::fs::create_dir_all(&relationships).unwrap();
+        std::fs::write(relationships.join("followers_1.json"), FOLLOWERS).unwrap();
+        std::fs::write(relationships.join("following.json"), FOLLOWING).unwrap();
+        let folder = parse_path(dir.path()).unwrap();
+        assert_eq!((folder.followers.len(), folder.following.len()), (1, 1));
+
+        let zip_path = dir.path().join("synthetic-export.zip");
+        let file = std::fs::File::create(&zip_path).unwrap();
+        let mut archive = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default();
+        archive
+            .start_file(
+                "connections/followers_and_following/followers_1.json",
+                options,
+            )
+            .unwrap();
+        archive.write_all(FOLLOWERS).unwrap();
+        archive
+            .start_file(
+                "connections/followers_and_following/following.json",
+                options,
+            )
+            .unwrap();
+        archive.write_all(FOLLOWING).unwrap();
+        archive.finish().unwrap();
+        let zipped = parse_path(&zip_path).unwrap();
+        assert_eq!(folder.hash, zipped.hash);
     }
 
     #[test]

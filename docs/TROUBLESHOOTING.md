@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Start by confirming your version and that you have a complete Instagram export in JSON format. The latest published release is v0.1.1; the current `main` branch contains stricter unreleased import hardening described in [version differences](GETTING_STARTED.md#version-differences).
+Start by confirming your version and that you have a complete Instagram export in JSON format. The stable release is v0.1.1; the v0.2.0-preview.1 prerelease contains the stricter import hardening described in [version differences](GETTING_STARTED.md#version-differences).
 
 ## The file picker does not show my export
 
@@ -36,11 +36,11 @@ Snapshot identity is based on normalized follower and following membership, not 
 
 Changes require at least two snapshots in the same local account history. Confirm that both exports were added to the same selected account and that the intended relationship category and search field are active.
 
-An empty result can also be correct: no usernames in that category changed between the two newest snapshots.
+An empty result can also be correct: no usernames in that category changed between the selected snapshot and its immediately prior import.
 
 ## CSV or JSON export was not created
 
-Cancelling the native save dialog intentionally creates no file. Try again and choose a writable destination. The export contains the active relationship category; it does not export Changes-view additions and removals.
+Cancelling the native save dialog intentionally creates no file. Try again and choose a writable destination. Accounts view exports the active relationship category; Changes view exports additions and removals for that category and requires an immediately prior snapshot.
 
 ## Windows or macOS warns about an unknown developer
 

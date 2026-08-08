@@ -161,8 +161,8 @@ impl LabParticipationAgent {
     }
 
     pub fn enqueue(&mut self, lookup: PrivateLookup) -> Result<(), String> {
-        let canonical = crate::parser::normalize(&lookup.normalized_username);
-        if !crate::parser::is_valid_username(&lookup.normalized_username)
+        let canonical = crate::identity::normalize(&lookup.normalized_username);
+        if !crate::identity::is_valid_username(&lookup.normalized_username)
             || lookup.normalized_username != canonical
         {
             return Err("Lookup username must be normalized".into());

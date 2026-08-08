@@ -66,6 +66,10 @@ pub struct FameFoundationStatus {
     pub protocol_schema_version: u32,
     pub fixed_corpus_record_bytes: usize,
     pub network_retrieval_available: bool,
+    pub architecture_status: &'static str,
+    pub next_stage: &'static str,
+    pub completed_foundations: Vec<&'static str>,
+    pub blocked_gates: Vec<&'static str>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Person {

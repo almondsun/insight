@@ -10,8 +10,9 @@ The current desktop application provides:
 - Followers, following, mutuals, and both non-reciprocal categories.
 - Searchable local relationship lists.
 - Multiple account histories and immutable snapshots.
-- Additions and removals between the two newest snapshots.
-- CSV and JSON relationship exports.
+- Additions and removals for a selected snapshot and its immediately prior import.
+- CSV and JSON relationship and change exports.
+- Account rename, full-account deletion, and a read-only Fame engineering status view.
 - Local SQLite persistence with no Instagram login, scraping, upload, or telemetry.
 
 ## Product hardening
@@ -20,8 +21,7 @@ The next conventional product work is to strengthen distribution and usability w
 
 - Sign and notarize release artifacts for supported platforms.
 - Expand platform and installer smoke testing.
-- Improve account-history management and change-report export.
-- Add sanitized end-to-end import fixtures and more user-interface coverage.
+- Continue expanding platform and installer smoke coverage.
 - Keep import compatibility aligned with documented Instagram JSON export changes.
 
 Specific items enter a release only after implementation and validation; their presence here does not mean they are available.
@@ -38,7 +38,7 @@ The following are not implemented or approved:
 - Threshold governance, witnessed transparency, fresh authenticated time, and platform rollback adapters.
 - End-to-end dummy and real wire equivalence.
 - Production privacy parameters, reproducible traffic-analysis evidence, and independent audits.
-- A user consent, run, progress, ranking, refresh, or export interface.
+- A user consent, run, progress, ranking, refresh, or Fame-result export interface.
 
 Fame must progress in the locked order:
 

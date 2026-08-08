@@ -796,6 +796,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
+name = "fame-core"
+version = "0.2.0-preview.1"
+dependencies = [
+ "chrono",
+ "serde",
+ "sha2",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1563,10 +1572,11 @@ dependencies = [
 
 [[package]]
 name = "insight"
-version = "0.1.1"
+version = "0.2.0-preview.1"
 dependencies = [
  "chrono",
  "csv",
+ "fame-core",
  "rusqlite",
  "serde",
  "serde_json",

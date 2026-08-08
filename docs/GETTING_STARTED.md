@@ -4,7 +4,7 @@ This guide covers installing insIGht, requesting the right Instagram export, and
 
 ## 1. Download the right build
 
-Open the [latest GitHub release](https://github.com/almondsun/insight/releases/latest) and choose an artifact for your system.
+Open the [v0.2.0-preview.1 prerelease](https://github.com/almondsun/insight/releases/tag/v0.2.0-preview.1) and choose an artifact for your system.
 
 | System | Choose | Notes |
 | --- | --- | --- |
@@ -14,22 +14,22 @@ Open the [latest GitHub release](https://github.com/almondsun/insight/releases/l
 | Fedora, RHEL, or compatible x86-64 | `x86_64.rpm` | Uses the system package manager. |
 | Other supported x86-64 Linux desktops | `amd64.AppImage` | Portable application image. |
 
-Version 0.1.1 artifacts are not code-signed or notarized. Review the release notes and compare the downloaded file's SHA-256 digest with the digest displayed by GitHub. Do not disable operating-system security features globally to install insIGht.
+Preview artifacts are not code-signed or notarized. Review the release notes and verify the artifact against the release's `SHA256SUMS` file. Do not disable operating-system security features globally to install insIGht.
 
 Windows or macOS may require you to confirm that you trust an unknown developer. Linux AppImage users may need to mark the downloaded file as executable through file properties or `chmod +x`.
 
 ## Version differences
 
-The latest published binaries are v0.1.1, while this repository contains unreleased import hardening.
+The stable release is v0.1.1. The v0.2.0-preview.1 prerelease contains the hardened workflow on `main`.
 
-| Behavior | Current `main` | Published v0.1.1 |
+| Behavior | v0.2 preview / current `main` | Stable v0.1.1 |
 | --- | --- | --- |
 | Import and export path selection | Native code owns the dialog result; the WebView cannot submit arbitrary paths. | The WebView supplies paths selected through the Tauri dialog plugin. |
 | Accepted import selection | Complete ZIP or extracted folder containing both relationship directions. | ZIP, folder, or individual JSON; partial relationship data is accepted. |
 | Archive owner | Must be detected or entered and confirmed before commit. | No explicit owner-confirmation step. |
 | Folder protections | Entry, depth, relevant-file, per-file, and aggregate relevant-byte limits. | Relevant-file and per-file limits; no folder entry, depth, or aggregate-byte limit. |
 
-Both versions perform local analytics without Instagram credentials, scraping, archive upload, or telemetry. For the strongest implemented filesystem and parser boundaries, build current `main` or wait for the next release containing the hardening.
+Both versions perform local analytics without Instagram credentials, scraping, archive upload, or telemetry. Use the v0.2 preview for the strongest implemented filesystem and parser boundaries.
 
 ## 2. Request a JSON export from Instagram
 

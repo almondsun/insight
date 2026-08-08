@@ -12,19 +12,21 @@ GitHub Releases are the distribution channel for versioned desktop installers.
 - Verify the platform and architecture table in [Getting Started](GETTING_STARTED.md) against the actual release assets.
 - Verify that [GitHub repository metadata](GITHUB_METADATA.md) still matches the live About panel.
 
-## Creating A Draft Release
+## Creating A Release
 
 1. Merge the release changes into `main` after required checks pass.
 2. Create and push a semantic version tag:
 
    ```bash
-   git tag -a v0.1.0 -m "insIGht 0.1.0"
-   git push origin v0.1.0
+   git tag -a v0.2.0-preview.1 -m "insIGht 0.2.0-preview.1"
+   git push origin v0.2.0-preview.1
    ```
 
 3. The `Release` GitHub Actions workflow builds artifacts on Windows, macOS, and Linux.
-4. Inspect every artifact and test installation on its target platform.
-5. Replace the generated draft body with release notes and publish the draft.
+4. For prerelease tags, a finalizer verifies Windows, macOS, and Linux asset
+   coverage, generates `SHA256SUMS`, and publishes the prerelease. Stable tags
+   remain drafts for manual artifact inspection and platform smoke testing.
+5. Never reinterpret a failed build or missing platform asset as a releasable result.
 
 ## Signing
 
@@ -40,4 +42,6 @@ Use semantic versioning:
 - Minor: compatible features
 - Major: incompatible persisted-data, import, report, CLI, or public interface changes
 
-Pre-release tags such as `v0.2.0-beta.1` should be marked as pre-releases manually before publication.
+Pre-release tags such as `v0.2.0-preview.1` are published automatically only
+after the cross-platform build and checksum finalizer pass. Preview artifacts
+remain unsigned until signing credentials are configured and verified.
