@@ -17,8 +17,8 @@ function response(command:string,args?:Record<string,unknown>){
     case "list_accounts":return [account];
     case "list_snapshots":return [newest,oldest];
     case "get_summary":return {followers:2,following:1,mutuals:1,notFollowingBack:0,followersNotFollowedBack:1,newFollowers:1,lostFollowers:0,hasPreviousSnapshot:true};
-    case "get_relationships":return [{username:"alice",profileUrl:null,kind:args?.kind}];
-    case "compare_snapshots":return [{username:"alice",profileUrl:null,category:"followers",direction:"added"}];
+    case "get_relationships":return {items:[{username:"alice",profileUrl:null,kind:args?.kind}],nextCursor:null};
+    case "compare_snapshots":return {items:[{username:"alice",profileUrl:null,category:"followers",direction:"added"}],nextCursor:null};
     case "get_fame_foundation_status":return {implementationStage:"synthetic_foundation",formulaVersion:"fame-v1",protocolSchemaVersion:1,fixedCorpusRecordBytes:64,networkRetrievalAvailable:false,architectureStatus:"frozen",nextStage:"formal",completedFoundations:["versioned scoring"],blockedGates:["independent PIR operators"]};
     case "rename_account":return {...account,label:args?.label};
     default:return undefined;
@@ -39,7 +39,7 @@ describe("desktop workflow",()=>{
     await screen.findByText("@alice");
     await userEvent.click(screen.getByRole("button",{name:"Changes"}));
     expect(await screen.findByText("added")).toBeTruthy();
-    expect(invoke).toHaveBeenCalledWith("compare_snapshots",{fromSnapshotId:1,toSnapshotId:2});
+    expect(invoke).toHaveBeenCalledWith("compare_snapshots",{fromSnapshotId:1,toSnapshotId:2,category:"followers",search:"",after:null,limit:200});
     const historyButtons=screen.getAllByRole("button",{name:/1 follower/});
     await userEvent.click(historyButtons[0]);
     expect(await screen.findByText(/oldest snapshot/i)).toBeTruthy();
@@ -78,5 +78,31 @@ describe("desktop workflow",()=>{
     await screen.findByRole("heading",{name:"My history"});
     await userEvent.click(screen.getByRole("button",{name:"Delete"}));
     await waitFor(()=>expect(invoke).toHaveBeenCalledWith("delete_account",{accountId:1}));
+  });
+
+  it("loads the next relationship page from the native cursor",async()=>{
+    invoke.mockImplementation((command,args)=>{
+      if(command==="get_relationships")return Promise.resolve(args?.after
+        ?{items:[{username:"bob",profileUrl:null,kind:"followers"}],nextCursor:null}
+        :{items:[{username:"alice",profileUrl:null,kind:"followers"}],nextCursor:"alice"});
+      return Promise.resolve(response(command,args));
+    });
+    renderApp();
+    await screen.findByText("@alice");
+    await userEvent.click(screen.getByRole("button",{name:"Load more"}));
+    expect(await screen.findByText("@bob")).toBeTruthy();
+    expect(invoke).toHaveBeenCalledWith("get_relationships",{
+      snapshotId:2,kind:"followers",search:"",after:"alice",limit:200
+    });
+  });
+
+  it("debounces search before querying the native database",async()=>{
+    renderApp();
+    await screen.findByText("@alice");
+    invoke.mockClear();
+    await userEvent.type(screen.getByRole("textbox",{name:"Search username"}),"bob");
+    await waitFor(()=>expect(invoke).toHaveBeenCalledWith("get_relationships",{
+      snapshotId:2,kind:"followers",search:"bob",after:null,limit:200
+    }),{timeout:1_000});
   });
 });

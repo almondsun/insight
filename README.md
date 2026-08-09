@@ -15,7 +15,7 @@
 ![The insIGht desktop import screen](docs/assets/insight-preview.png)
 
 > [!IMPORTANT]
-> The hardened workflow is available in the unsigned [v0.2.0-preview.2 prerelease](https://github.com/almondsun/insight/releases/tag/v0.2.0-preview.2). The stable-release link still resolves to v0.1.1, which predates these boundaries.
+> The hardened workflow is available in the unsigned [v0.2.0-preview.3 prerelease](https://github.com/almondsun/insight/releases/tag/v0.2.0-preview.3). The stable-release link still resolves to v0.1.1, which predates these boundaries.
 
 ## Your Instagram relationships, made understandable
 
@@ -54,7 +54,7 @@ Your local database and exported reports can still contain personal information.
 
 ## Downloads
 
-Version 0.2.0-preview.2 provides unsigned builds and a release-wide `SHA256SUMS` file:
+Version 0.2.0-preview.3 provides unsigned builds and a release-wide `SHA256SUMS` file:
 
 | Platform | Current artifact choices | Architecture |
 | --- | --- | --- |
@@ -64,7 +64,7 @@ Version 0.2.0-preview.2 provides unsigned builds and a release-wide `SHA256SUMS`
 
 The installers are not code-signed or notarized. Windows and macOS may display an unknown-developer warning. Review the release notes and verify the SHA-256 digest shown by GitHub before installing.
 
-[Download the v0.2 preview →](https://github.com/almondsun/insight/releases/tag/v0.2.0-preview.2)
+[Download the v0.2 preview →](https://github.com/almondsun/insight/releases/tag/v0.2.0-preview.3)
 
 ## Fame roadmap
 
@@ -83,7 +83,7 @@ Fame is a proposed optional ranking feature based on public follower and followi
 
 ## Build from source
 
-You need Node.js 22 or newer, stable Rust, and the [Tauri 2 platform prerequisites](https://v2.tauri.app/start/prerequisites/).
+You need Node.js 22 or newer, the Rust toolchain pinned by `rust-toolchain.toml`, and the [Tauri 2 platform prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 git clone https://github.com/almondsun/insight.git

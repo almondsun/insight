@@ -11,6 +11,17 @@ Start with the [architecture overview](docs/ARCHITECTURE.md), then read the user
 5. Run `npm run check`.
 6. Open a pull request using the repository template.
 
+The repository is one Cargo workspace with one root `Cargo.lock`. The checked-in
+`rust-toolchain.toml` is authoritative; do not create package-local lockfiles or
+silently substitute another Rust release in CI.
+
+For changes that affect query or import scalability, also run the opt-in
+250,000-account capacity regression:
+
+```bash
+cargo test --package insight --lib handles_250k_unique_accounts_in_one_snapshot -- --ignored
+```
+
 ## Pull Requests
 
 - Keep changes scoped and explain user-visible or compatibility effects.

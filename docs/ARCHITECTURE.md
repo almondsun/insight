@@ -31,25 +31,25 @@ Official Instagram JSON ZIP or folder
 
 Rust owns import selection, export destinations, archive parsing, validation, SQLite access, summary calculations, comparisons, report serialization, and deletion. Import parsing and native file dialogs run outside the WebView boundary.
 
-The parser does not follow nested directory symlinks, although a symlink explicitly selected as the traversal root may be resolved. It accepts only enclosed ZIP entry paths, reads recognized files, and applies entry-count, file-count, individual-size, aggregate-size, and traversal-depth limits. Usernames and profile URLs are normalized before persistence.
+The parser follows neither nested directory symlinks nor a symlink selected as the traversal root. It accepts only enclosed ZIP entry paths, preflights raw central-directory metadata before constructing the archive reader, rejects canonical duplicate entry names, reads recognized files, and applies entry-count, file-count, relationship-count, individual-size, aggregate-size, and traversal-depth limits. Usernames and profile URLs are normalized before persistence.
 
 ## Persistence
 
 At startup, Tauri resolves the operating system's application-data directory and opens `insight.db`. Database migrations use SQLite's `user_version`. Accounts contain immutable snapshots; relationships belong to a snapshot and are not stored as redundant derived categories.
 
-Mutuals and non-reciprocal categories are derived from follower and following membership. Snapshot hashes are based on normalized membership so equivalent imports are detected as duplicates.
+Mutuals and non-reciprocal categories are derived from follower and following membership. Summary metrics are database aggregates; relationship and change lists use stable cursor pagination instead of loading a snapshot into the WebView at once. Snapshot hashes are based on normalized membership so equivalent imports are detected as duplicates.
 
-The schema also contains immutable Fame runs, memberships, and observation foundations with an authentication-state field. No cryptographic observation verifier or retrieval orchestration is implemented; account and snapshot deletion still applies the defined cascades and unreferenced-observation cleanup.
+The separate Fame persistence adapter installs run, membership, and observation schema scaffolding with an authentication-state field. No production command populates it, and no cryptographic observation verifier or retrieval orchestration is implemented. Account and snapshot deletion still applies the defined cascades and unreferenced-observation cleanup.
 
 ## Tauri interface
 
-The native command surface exposes account and snapshot queries, account rename/delete, import preview/commit/cancel, summaries, relationship lists, comparisons, snapshot deletion, native relationship/change report export, and a read-only Fame foundation status.
+The native command surface exposes account and snapshot queries, account rename/delete, import preview/commit/cancel, summaries, paged relationship lists, paged adjacent-snapshot comparisons, snapshot deletion, native relationship/change report export, and a read-only Fame foundation status. CSV and JSON exports stream a transaction-consistent database snapshot through a dedicated connection on a blocking worker, sync a private sibling temporary file, and atomically replace the selected destination only after success.
 
 TypeScript models mirror serialized Rust responses. Network access is not exposed to the WebView. The current content security policy permits local application resources and Tauri IPC.
 
 ## Frontend
 
-React and TanStack Query manage server-state caching and mutations. Presentation helpers own user-facing matching and display transformations; native code remains authoritative for filesystem, archive, persistence, and validation behavior.
+React and TanStack Query manage server-state caching, mutations, debounced search, and incremental page loading. A dedicated results component owns list/change row rendering; native code remains authoritative for filesystem, archive, persistence, filtering, and validation behavior.
 
 The interface compares a selected snapshot with its immediately prior import. Export behavior follows the current list or change view.
 

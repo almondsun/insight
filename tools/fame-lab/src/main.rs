@@ -75,6 +75,13 @@ fn read_json<T: serde::de::DeserializeOwned>(path: &PathBuf) -> Result<T> {
         .with_context(|| format!("parse {}", path.display()))
 }
 
+fn activation_times(activation: i64) -> Result<(i64, i64)> {
+    let before = activation
+        .checked_sub(1)
+        .ok_or_else(|| anyhow!("manifest activation time cannot be represented safely"))?;
+    Ok((before, activation))
+}
+
 fn main() -> Result<()> {
     let result = match Cli::parse().command {
         LabCommand::Status => serde_json::to_value(status())?,
@@ -91,8 +98,8 @@ fn main() -> Result<()> {
         } => {
             let manifest: ProtocolManifest = read_json(&manifest)?;
             let tuple: CompatibilityTuple = read_json(&tuple)?;
-            let before = manifest.epoch_policy.activates_at_unix_ms - 1;
-            let activation = manifest.epoch_policy.activates_at_unix_ms;
+            let (before, activation) =
+                activation_times(manifest.epoch_policy.activates_at_unix_ms)?;
             let mut agent = LabParticipationAgent::default();
             agent
                 .configure(manifest, &tuple, before)
@@ -141,4 +148,15 @@ fn main() -> Result<()> {
     };
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::activation_times;
+
+    #[test]
+    fn rejects_unrepresentable_activation_predecessor() {
+        assert!(activation_times(i64::MIN).is_err());
+        assert_eq!(activation_times(0).unwrap(), (-1, 0));
+    }
 }

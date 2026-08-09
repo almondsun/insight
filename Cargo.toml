@@ -1,0 +1,24 @@
+[workspace]
+members = ["src-tauri", "crates/fame-core", "tools/fame-lab"]
+resolver = "2"
+
+[workspace.package]
+version = "0.2.0-preview.3"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive"] }
+csv = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tempfile = "3"
+walkdir = "2"
+zip = { version = "2", default-features = false, features = ["deflate"] }
