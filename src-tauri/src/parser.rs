@@ -2,16 +2,21 @@ use crate::model::{ParsedImport, Person};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     fs::File,
-    io::{Cursor, Read},
+    io::{Cursor, Read, Seek, SeekFrom},
     path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
 const MAX_FILES: usize = 2_000;
 const MAX_ARCHIVE_ENTRIES: usize = 10_000;
+const MAX_CENTRAL_DIRECTORY_BYTES: u64 = 16 * 1024 * 1024;
+const MAX_ZIP64_END_RECORD_BYTES: u64 = 64 * 1024;
 const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 128 * 1024 * 1024;
+const MAX_COMPRESSED_FILE_BYTES: u64 = 32 * 1024 * 1024;
+const MAX_TOTAL_COMPRESSED_BYTES: u64 = 256 * 1024 * 1024;
+const MAX_RELATIONSHIP_RECORDS: usize = 500_000;
 pub fn parse_path(path: &Path) -> Result<ParsedImport, String> {
     if !path.exists() {
         return Err("Selected import does not exist".into());
@@ -25,7 +30,11 @@ pub fn parse_path(path: &Path) -> Result<ParsedImport, String> {
     if path.is_dir() {
         let mut total = 0_u64;
         let mut entries = 0_usize;
-        for entry in WalkDir::new(path).follow_links(false).max_depth(20) {
+        for entry in WalkDir::new(path)
+            .follow_links(false)
+            .follow_root_links(false)
+            .max_depth(20)
+        {
             let entry = entry.map_err(|e| format!("Unable to read import folder: {e}"))?;
             entries += 1;
             if entries > MAX_ARCHIVE_ENTRIES {
@@ -55,27 +64,38 @@ pub fn parse_path(path: &Path) -> Result<ParsedImport, String> {
         .and_then(|x| x.to_str())
         .is_some_and(|x| x.eq_ignore_ascii_case("zip"))
     {
-        let file = File::open(path).map_err(|e| e.to_string())?;
+        let mut file = File::open(path).map_err(|e| e.to_string())?;
+        preflight_zip(&mut file)?;
         let mut zip = zip::ZipArchive::new(file)
             .map_err(|_| "This is not a valid ZIP archive".to_string())?;
         if zip.len() > MAX_ARCHIVE_ENTRIES {
             return Err("Import archive contains too many entries".into());
         }
         let mut total = 0_u64;
+        let mut total_compressed = 0_u64;
+        let mut names = HashSet::new();
         for i in 0..zip.len() {
             let mut item = zip.by_index(i).map_err(|e| e.to_string())?;
             let Some(safe) = item.enclosed_name() else {
                 return Err("Archive contains an unsafe path".into());
             };
+            if !item.is_dir() {
+                let canonical = safe.to_string_lossy().replace('\\', "/").to_lowercase();
+                if !names.insert(canonical) {
+                    return Err("Archive contains duplicate file names".into());
+                }
+            }
             if !is_import_candidate(&safe) {
                 continue;
             }
             if files.len() >= MAX_FILES {
                 return Err("Import contains too many relationship files".into());
             }
-            if item.size() > MAX_FILE_BYTES {
-                return Err("A JSON file exceeds the 16 MB safety limit".into());
-            }
+            validate_zip_candidate_sizes(
+                item.size(),
+                item.compressed_size(),
+                &mut total_compressed,
+            )?;
             let data = read_bounded(&mut item)?;
             total = total
                 .checked_add(data.len() as u64)
@@ -89,6 +109,138 @@ pub fn parse_path(path: &Path) -> Result<ParsedImport, String> {
         return Err("Choose a complete Instagram JSON export ZIP or folder".into());
     }
     parse_files(name, files)
+}
+
+fn preflight_zip(file: &mut File) -> Result<(), String> {
+    const EOCD_MIN: u64 = 22;
+    const MAX_COMMENT: u64 = u16::MAX as u64;
+    let length = file.metadata().map_err(|e| e.to_string())?.len();
+    if length < EOCD_MIN {
+        return Err("This is not a valid ZIP archive".into());
+    }
+    let tail_len = length.min(EOCD_MIN + MAX_COMMENT + 20);
+    file.seek(SeekFrom::End(-(tail_len as i64)))
+        .map_err(|e| e.to_string())?;
+    let mut tail = vec![0; tail_len as usize];
+    file.read_exact(&mut tail).map_err(|e| e.to_string())?;
+    let eocd = (0..=tail.len() - EOCD_MIN as usize)
+        .rev()
+        .find(|offset| {
+            &tail[*offset..*offset + 4] == b"PK\x05\x06"
+                && *offset
+                    + EOCD_MIN as usize
+                    + usize::from(le_u16(&tail[*offset + 20..*offset + 22]))
+                    == tail.len()
+        })
+        .ok_or("This is not a valid ZIP archive")?;
+    let eocd_absolute = length - tail_len + eocd as u64;
+    let disk = le_u16(&tail[eocd + 4..eocd + 6]);
+    let central_disk = le_u16(&tail[eocd + 6..eocd + 8]);
+    let entries_on_disk = le_u16(&tail[eocd + 8..eocd + 10]);
+    let entries = le_u16(&tail[eocd + 10..eocd + 12]);
+    let central_size = le_u32(&tail[eocd + 12..eocd + 16]);
+    let central_offset = le_u32(&tail[eocd + 16..eocd + 20]);
+    let needs_zip64 = entries == u16::MAX || central_size == u32::MAX || central_offset == u32::MAX;
+    let (entries, central_size, central_offset, central_end_boundary, is_single_disk) =
+        if needs_zip64 {
+            if eocd < 20 || &tail[eocd - 20..eocd - 16] != b"PK\x06\x07" {
+                return Err("ZIP64 archive is missing its locator".into());
+            }
+            let locator_disk = le_u32(&tail[eocd - 16..eocd - 12]);
+            let zip64_offset = le_u64(&tail[eocd - 12..eocd - 4]);
+            let locator_disks = le_u32(&tail[eocd - 4..eocd]);
+            let mut record = [0_u8; 56];
+            file.seek(SeekFrom::Start(zip64_offset))
+                .map_err(|e| e.to_string())?;
+            file.read_exact(&mut record).map_err(|e| e.to_string())?;
+            if &record[..4] != b"PK\x06\x06" {
+                return Err("ZIP64 archive is missing its end record".into());
+            }
+            let record_size = le_u64(&record[4..12]);
+            let locator_absolute = eocd_absolute
+                .checked_sub(20)
+                .ok_or("ZIP64 locator is outside the archive")?;
+            if !(44..=MAX_ZIP64_END_RECORD_BYTES).contains(&record_size)
+                || zip64_offset
+                    .checked_add(12)
+                    .and_then(|value| value.checked_add(record_size))
+                    != Some(locator_absolute)
+            {
+                return Err("ZIP64 end record is too large or misplaced".into());
+            }
+            let zip64_disk = le_u32(&record[16..20]);
+            let zip64_central_disk = le_u32(&record[20..24]);
+            let zip64_entries_on_disk = le_u64(&record[24..32]);
+            let zip64_entries = le_u64(&record[32..40]);
+            (
+                zip64_entries,
+                le_u64(&record[40..48]),
+                le_u64(&record[48..56]),
+                zip64_offset,
+                locator_disk == 0
+                    && locator_disks == 1
+                    && zip64_disk == 0
+                    && zip64_central_disk == 0
+                    && zip64_entries_on_disk == zip64_entries,
+            )
+        } else {
+            (
+                u64::from(entries),
+                u64::from(central_size),
+                u64::from(central_offset),
+                eocd_absolute,
+                disk == 0 && central_disk == 0 && entries_on_disk == entries,
+            )
+        };
+    if !is_single_disk {
+        return Err("Multi-disk ZIP archives are not supported".into());
+    }
+    if entries > MAX_ARCHIVE_ENTRIES as u64 {
+        return Err("Import archive contains too many entries".into());
+    }
+    if central_size > MAX_CENTRAL_DIRECTORY_BYTES {
+        return Err("Import archive directory is too large".into());
+    }
+    if central_offset
+        .checked_add(central_size)
+        .is_none_or(|end| end != central_end_boundary)
+    {
+        return Err("ZIP central directory layout is unsupported".into());
+    }
+    file.seek(SeekFrom::Start(0)).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn validate_zip_candidate_sizes(
+    uncompressed: u64,
+    compressed: u64,
+    total_compressed: &mut u64,
+) -> Result<(), String> {
+    if uncompressed > MAX_FILE_BYTES {
+        return Err("A JSON file exceeds the 16 MB safety limit".into());
+    }
+    if compressed > MAX_COMPRESSED_FILE_BYTES {
+        return Err("A compressed JSON entry exceeds the 32 MB safety limit".into());
+    }
+    *total_compressed = total_compressed
+        .checked_add(compressed)
+        .ok_or("Compressed import size overflow")?;
+    if *total_compressed > MAX_TOTAL_COMPRESSED_BYTES {
+        return Err("Archive compressed JSON data exceeds the 256 MB safety limit".into());
+    }
+    Ok(())
+}
+
+fn le_u16(bytes: &[u8]) -> u16 {
+    u16::from_le_bytes(bytes.try_into().expect("validated ZIP field width"))
+}
+
+fn le_u32(bytes: &[u8]) -> u32 {
+    u32::from_le_bytes(bytes.try_into().expect("validated ZIP field width"))
+}
+
+fn le_u64(bytes: &[u8]) -> u64 {
+    u64::from_le_bytes(bytes.try_into().expect("validated ZIP field width"))
 }
 
 fn read_bounded(reader: impl Read) -> Result<Vec<u8>, String> {
@@ -123,6 +275,7 @@ fn parse_files(name: String, files: Vec<(PathBuf, Vec<u8>)>) -> Result<ParsedImp
     let mut following = BTreeMap::new();
     let mut detected = None;
     let mut relevant = 0;
+    let mut relationship_records = 0_usize;
     let mut saw_followers = false;
     let mut saw_following = false;
     for (path, data) in files {
@@ -164,6 +317,12 @@ fn parse_files(name: String, files: Vec<(PathBuf, Vec<u8>)>) -> Result<ParsedImp
             } else {
                 extract_followers(&value)?
             };
+            relationship_records = relationship_records
+                .checked_add(people.len())
+                .ok_or("Relationship count overflow")?;
+            if relationship_records > MAX_RELATIONSHIP_RECORDS {
+                return Err("Import contains more than 500,000 relationship records".into());
+            }
             for mut p in people {
                 if !is_valid_username(&p.username) {
                     return Err(format!("Invalid Instagram username in {}", path.display()));
@@ -374,9 +533,97 @@ mod tests {
             )
             .unwrap();
         archive.write_all(FOLLOWING).unwrap();
+        archive.set_raw_comment(
+            b"comment containing a misleading PK\x05\x06 signature"
+                .to_vec()
+                .into_boxed_slice(),
+        );
         archive.finish().unwrap();
         let zipped = parse_path(&zip_path).unwrap();
         assert_eq!(folder.hash, zipped.hash);
+    }
+
+    #[test]
+    fn rejects_duplicate_archive_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("duplicate.zip");
+        let file = std::fs::File::create(&zip_path).unwrap();
+        let mut archive = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default();
+        for name in ["followers_1.json", "FOLLOWERS_1.JSON"] {
+            archive
+                .start_file(
+                    format!("connections/followers_and_following/{name}"),
+                    options,
+                )
+                .unwrap();
+            archive.write_all(FOLLOWERS).unwrap();
+        }
+        archive
+            .start_file(
+                "connections/followers_and_following/following.json",
+                options,
+            )
+            .unwrap();
+        archive.write_all(FOLLOWING).unwrap();
+        archive.finish().unwrap();
+
+        assert!(parse_path(&zip_path)
+            .unwrap_err()
+            .contains("duplicate file names"));
+    }
+
+    #[test]
+    fn preflight_rejects_excessive_declared_entry_count() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("too-many.zip");
+        let file = std::fs::File::create(&zip_path).unwrap();
+        let archive = zip::ZipWriter::new(file);
+        archive.finish().unwrap();
+        let mut bytes = std::fs::read(&zip_path).unwrap();
+        let eocd = bytes
+            .windows(4)
+            .rposition(|window| window == b"PK\x05\x06")
+            .unwrap();
+        let declared = 10_001_u16.to_le_bytes();
+        bytes[eocd + 8..eocd + 10].copy_from_slice(&declared);
+        bytes[eocd + 10..eocd + 12].copy_from_slice(&declared);
+        std::fs::write(&zip_path, bytes).unwrap();
+
+        assert!(parse_path(&zip_path)
+            .unwrap_err()
+            .contains("too many entries"));
+    }
+
+    #[test]
+    fn preflight_rejects_oversized_zip64_end_record() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("oversized-zip64.zip");
+        let mut bytes = vec![0_u8; 56 + 20 + 22];
+        bytes[0..4].copy_from_slice(b"PK\x06\x06");
+        bytes[4..12].copy_from_slice(&(MAX_ZIP64_END_RECORD_BYTES + 1).to_le_bytes());
+        let locator = 56;
+        bytes[locator..locator + 4].copy_from_slice(b"PK\x06\x07");
+        bytes[locator + 8..locator + 16].copy_from_slice(&0_u64.to_le_bytes());
+        bytes[locator + 16..locator + 20].copy_from_slice(&1_u32.to_le_bytes());
+        let eocd = locator + 20;
+        bytes[eocd..eocd + 4].copy_from_slice(b"PK\x05\x06");
+        bytes[eocd + 8..eocd + 12].copy_from_slice(&[0xff; 4]);
+        bytes[eocd + 12..eocd + 20].copy_from_slice(&[0xff; 8]);
+        std::fs::write(&zip_path, bytes).unwrap();
+
+        assert!(parse_path(&zip_path)
+            .unwrap_err()
+            .contains("end record is too large"));
+    }
+
+    #[test]
+    fn rejects_excessive_compressed_candidate_work() {
+        let mut total = 0;
+        assert!(
+            validate_zip_candidate_sizes(1, MAX_COMPRESSED_FILE_BYTES + 1, &mut total).is_err()
+        );
+        assert_eq!(total, 0);
     }
 
     #[test]

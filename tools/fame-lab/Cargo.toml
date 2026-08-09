@@ -1,15 +1,15 @@
 [package]
 name = "fame-lab"
-version = "0.2.0-preview.2"
-edition = "2021"
-license = "MIT"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 publish = false
 
 [dependencies]
-anyhow = "1"
-chrono = { version = "0.4", features = ["serde"] }
-clap = { version = "4", features = ["derive"] }
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
 fame-core = { path = "../../crates/fame-core" }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-sha2 = "0.10"
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true

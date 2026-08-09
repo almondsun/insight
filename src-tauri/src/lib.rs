@@ -1,26 +1,44 @@
 mod db;
+mod export;
+mod fame_store;
 mod model;
 mod parser;
 pub use fame_core::{agent, corpus, fame, protocol};
 use model::*;
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Mutex,
+use std::{
+    path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Mutex,
+    },
 };
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
 struct AppState {
     db: Mutex<rusqlite::Connection>,
+    db_path: PathBuf,
     pending: Mutex<Option<(String, ParsedImport)>>,
     tokens: AtomicU64,
 }
+
+#[cfg(unix)]
+fn set_private_permissions(path: &Path, mode: u32) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(not(unix))]
+fn set_private_permissions(_path: &Path, _mode: u32) -> Result<(), String> {
+    Ok(())
+}
 #[tauri::command]
 fn list_accounts(s: State<AppState>) -> Result<Vec<Account>, String> {
-    db::accounts(&s.db.lock().unwrap())
+    with_db(&s, db::accounts)
 }
 #[tauri::command]
 fn list_snapshots(account_id: i64, s: State<AppState>) -> Result<Vec<Snapshot>, String> {
-    db::snapshots(&s.db.lock().unwrap(), account_id)
+    with_db(&s, |connection| db::snapshots(connection, account_id))
 }
 #[tauri::command]
 fn get_summary(
@@ -28,28 +46,57 @@ fn get_summary(
     snapshot_id: Option<i64>,
     s: State<AppState>,
 ) -> Result<Summary, String> {
-    db::summary(&s.db.lock().unwrap(), account_id, snapshot_id)
+    with_db(&s, |connection| {
+        db::summary(connection, account_id, snapshot_id)
+    })
 }
 #[tauri::command]
 fn get_relationships(
     snapshot_id: i64,
     kind: String,
     search: String,
+    after: Option<String>,
+    limit: Option<usize>,
     s: State<AppState>,
-) -> Result<Vec<Relationship>, String> {
-    db::relationships(&s.db.lock().unwrap(), snapshot_id, &kind, &search)
+) -> Result<RelationshipPage, String> {
+    with_db(&s, |connection| {
+        db::relationships_page(
+            connection,
+            snapshot_id,
+            &kind,
+            &search,
+            after.as_deref(),
+            limit.unwrap_or(200),
+        )
+    })
 }
 #[tauri::command]
 fn compare_snapshots(
     from_snapshot_id: i64,
     to_snapshot_id: i64,
+    category: String,
+    search: String,
+    after: Option<String>,
+    limit: Option<usize>,
     s: State<AppState>,
-) -> Result<Vec<Change>, String> {
-    db::compare(&s.db.lock().unwrap(), from_snapshot_id, to_snapshot_id)
+) -> Result<ChangePage, String> {
+    with_db(&s, |connection| {
+        db::changes_page(
+            connection,
+            from_snapshot_id,
+            to_snapshot_id,
+            &category,
+            &search,
+            after.as_deref(),
+            limit.unwrap_or(200),
+        )
+    })
 }
 #[tauri::command]
 fn rename_account(account_id: i64, label: String, s: State<AppState>) -> Result<Account, String> {
-    db::rename_account(&s.db.lock().unwrap(), account_id, &label)
+    with_db(&s, |connection| {
+        db::rename_account(connection, account_id, &label)
+    })
 }
 
 #[tauri::command]
@@ -61,7 +108,7 @@ fn get_fame_foundation_status() -> FameFoundationStatus {
         fixed_corpus_record_bytes: corpus::FIXED_RECORD_BYTES,
         network_retrieval_available: false,
         architecture_status: "frozen",
-        next_stage: "formal_threat_model_and_feasibility_validation",
+        next_stage: "evidence_collection_and_feasibility_validation",
         completed_foundations: vec![
             "versioned fame-v1 scoring",
             "fixed-size committed synthetic corpus records",
@@ -77,7 +124,27 @@ fn get_fame_foundation_status() -> FameFoundationStatus {
         ],
     }
 }
-fn store_preview(parsed: ParsedImport, s: State<AppState>) -> ImportPreview {
+fn lock_error<T>(_error: std::sync::PoisonError<T>) -> String {
+    "Application state lock is unavailable".into()
+}
+
+fn with_db<T>(
+    state: &AppState,
+    operation: impl FnOnce(&rusqlite::Connection) -> Result<T, String>,
+) -> Result<T, String> {
+    let connection = state.db.lock().map_err(lock_error)?;
+    operation(&connection)
+}
+
+fn with_db_mut<T>(
+    state: &AppState,
+    operation: impl FnOnce(&mut rusqlite::Connection) -> Result<T, String>,
+) -> Result<T, String> {
+    let mut connection = state.db.lock().map_err(lock_error)?;
+    operation(&mut connection)
+}
+
+fn store_preview(parsed: ParsedImport, s: State<AppState>) -> Result<ImportPreview, String> {
     let token = format!("{}", s.tokens.fetch_add(1, Ordering::Relaxed));
     let preview = ImportPreview {
         token: token.clone(),
@@ -87,8 +154,8 @@ fn store_preview(parsed: ParsedImport, s: State<AppState>) -> ImportPreview {
         following: parsed.following.len(),
         warnings: parsed.warnings.clone(),
     };
-    *s.pending.lock().unwrap() = Some((token, parsed));
-    preview
+    *s.pending.lock().map_err(lock_error)? = Some((token, parsed));
+    Ok(preview)
 }
 
 #[tauri::command]
@@ -116,7 +183,7 @@ async fn choose_import(
     let parsed = tauri::async_runtime::spawn_blocking(move || parser::parse_path(&path))
         .await
         .map_err(|e| e.to_string())??;
-    Ok(Some(store_preview(parsed, s)))
+    Ok(Some(store_preview(parsed, s)?))
 }
 #[tauri::command]
 fn commit_import(
@@ -127,7 +194,7 @@ fn commit_import(
     s: State<AppState>,
 ) -> Result<Snapshot, String> {
     let mut parsed = {
-        let pending = s.pending.lock().unwrap();
+        let pending = s.pending.lock().map_err(lock_error)?;
         pending
             .as_ref()
             .filter(|(pending_token, _)| pending_token == &token)
@@ -146,8 +213,10 @@ fn commit_import(
         return Err("Confirmed owner does not match the archive metadata".into());
     }
     parsed.detected_username = Some(owner_username.to_string());
-    let snapshot = db::commit(&mut s.db.lock().unwrap(), &parsed, account_id, &label)?;
-    let mut pending = s.pending.lock().unwrap();
+    let snapshot = with_db_mut(&s, |connection| {
+        db::commit(connection, &parsed, account_id, &label)
+    })?;
+    let mut pending = s.pending.lock().map_err(lock_error)?;
     if pending
         .as_ref()
         .is_some_and(|(pending_token, _)| pending_token == &token)
@@ -159,7 +228,7 @@ fn commit_import(
 
 #[tauri::command]
 fn cancel_import(token: String, s: State<AppState>) -> Result<(), String> {
-    let mut pending = s.pending.lock().unwrap();
+    let mut pending = s.pending.lock().map_err(lock_error)?;
     if pending
         .as_ref()
         .is_some_and(|(pending_token, _)| pending_token == &token)
@@ -170,11 +239,13 @@ fn cancel_import(token: String, s: State<AppState>) -> Result<(), String> {
 }
 #[tauri::command]
 fn delete_snapshot(snapshot_id: i64, s: State<AppState>) -> Result<(), String> {
-    db::delete_snapshot(&mut s.db.lock().unwrap(), snapshot_id)
+    with_db_mut(&s, |connection| {
+        db::delete_snapshot(connection, snapshot_id)
+    })
 }
 #[tauri::command]
 fn delete_account(account_id: i64, s: State<AppState>) -> Result<(), String> {
-    db::delete_account(&mut s.db.lock().unwrap(), account_id)
+    with_db_mut(&s, |connection| db::delete_account(connection, account_id))
 }
 #[tauri::command]
 async fn export_report(
@@ -187,7 +258,10 @@ async fn export_report(
     if format != "json" && format != "csv" {
         return Err("Unsupported export format".into());
     }
-    let rows = db::relationships(&s.db.lock().unwrap(), snapshot_id, &kind, "")?;
+    if !db::valid_relationship_kind(&kind) {
+        return Err("Unsupported relationship category".into());
+    }
+    let db_path = s.db_path.clone();
     let export_format = format.clone();
     let default_name = format!("insight-{kind}.{format}");
     let selected = tauri::async_runtime::spawn_blocking(move || {
@@ -204,25 +278,8 @@ async fn export_report(
     };
     let path = selected.into_path().map_err(|e| e.to_string())?;
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        if format == "json" {
-            let body = serde_json::json!({"schemaVersion":1,"generatedAt":chrono::Utc::now().to_rfc3339(),"snapshotId":snapshot_id,"category":kind,"relationships":rows});
-            std::fs::write(path, serde_json::to_vec_pretty(&body).map_err(|e| e.to_string())?)
-                .map_err(|e| e.to_string())?;
-        } else {
-            let mut w = csv::Writer::from_path(path).map_err(|e| e.to_string())?;
-            w.write_record(["username", "profile_url", "category"])
-                .map_err(|e| e.to_string())?;
-            for x in rows {
-                w.write_record([
-                    csv_safe(x.username),
-                    csv_safe(x.profile_url.unwrap_or_default()),
-                    csv_safe(x.kind),
-                ])
-                .map_err(|e| e.to_string())?;
-            }
-            w.flush().map_err(|e| e.to_string())?;
-        }
-        Ok(())
+        let connection = db::open(&db_path)?;
+        export::relationships(&connection, &path, snapshot_id, &kind, &format)
     })
     .await
     .map_err(|e| e.to_string())??;
@@ -241,20 +298,10 @@ async fn export_changes(
     if format != "json" && format != "csv" {
         return Err("Unsupported export format".into());
     }
-    if !matches!(
-        category.as_str(),
-        "followers"
-            | "following"
-            | "mutuals"
-            | "not_following_back"
-            | "followers_not_followed_back"
-    ) {
+    if !db::valid_relationship_kind(&category) {
         return Err("Unsupported relationship category".into());
     }
-    let rows = db::compare(&s.db.lock().unwrap(), from_snapshot_id, to_snapshot_id)?
-        .into_iter()
-        .filter(|change| change.category == category)
-        .collect::<Vec<_>>();
+    let db_path = s.db_path.clone();
     let extension = format.clone();
     let default_name = format!("insight-changes-{category}.{format}");
     let selected = tauri::async_runtime::spawn_blocking(move || {
@@ -271,32 +318,19 @@ async fn export_changes(
     };
     let path = selected.into_path().map_err(|e| e.to_string())?;
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        if format == "json" {
-            let body = serde_json::json!({"schemaVersion":1,"generatedAt":chrono::Utc::now().to_rfc3339(),"fromSnapshotId":from_snapshot_id,"toSnapshotId":to_snapshot_id,"category":category,"changes":rows});
-            std::fs::write(path, serde_json::to_vec_pretty(&body).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-        } else {
-            let mut w = csv::Writer::from_path(path).map_err(|e| e.to_string())?;
-            w.write_record(["username", "profile_url", "category", "direction"]).map_err(|e| e.to_string())?;
-            for x in rows {
-                w.write_record([csv_safe(x.username), csv_safe(x.profile_url.unwrap_or_default()), csv_safe(x.category), csv_safe(x.direction)]).map_err(|e| e.to_string())?;
-            }
-            w.flush().map_err(|e| e.to_string())?;
-        }
-        Ok(())
-    }).await.map_err(|e| e.to_string())??;
+        let connection = db::open(&db_path)?;
+        export::changes(
+            &connection,
+            &path,
+            from_snapshot_id,
+            to_snapshot_id,
+            &category,
+            &format,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())??;
     Ok(true)
-}
-
-fn csv_safe(value: String) -> String {
-    if value
-        .as_bytes()
-        .first()
-        .is_some_and(|byte| matches!(byte, b'=' | b'+' | b'-' | b'@' | b'\t' | b'\r'))
-    {
-        format!("'{value}")
-    } else {
-        value
-    }
 }
 pub fn run() {
     tauri::Builder::default()
@@ -304,9 +338,12 @@ pub fn run() {
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
-            let conn = db::open(&dir.join("insight.db")).map_err(std::io::Error::other)?;
+            set_private_permissions(&dir, 0o700).map_err(std::io::Error::other)?;
+            let db_path = dir.join("insight.db");
+            let conn = db::open(&db_path).map_err(std::io::Error::other)?;
             app.manage(AppState {
                 db: Mutex::new(conn),
+                db_path,
                 pending: Mutex::new(None),
                 tokens: AtomicU64::new(1),
             });
@@ -330,18 +367,4 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("failed to run insIGht")
-}
-
-#[cfg(test)]
-mod export_tests {
-    use super::csv_safe;
-
-    #[test]
-    fn neutralizes_spreadsheet_formulas() {
-        for prefix in ['=', '+', '-', '@', '\t', '\r'] {
-            let value = format!("{prefix}danger");
-            assert_eq!(csv_safe(value.clone()), format!("'{value}"));
-        }
-        assert_eq!(csv_safe("safe_user".into()), "safe_user");
-    }
 }

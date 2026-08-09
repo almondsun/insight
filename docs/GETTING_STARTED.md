@@ -4,7 +4,7 @@ This guide covers installing insIGht, requesting the right Instagram export, and
 
 ## 1. Download the right build
 
-Open the [v0.2.0-preview.2 prerelease](https://github.com/almondsun/insight/releases/tag/v0.2.0-preview.2) and choose an artifact for your system.
+Open the [v0.2.0-preview.3 prerelease](https://github.com/almondsun/insight/releases/tag/v0.2.0-preview.3) and choose an artifact for your system.
 
 | System | Choose | Notes |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Windows or macOS may require you to confirm that you trust an unknown developer.
 
 ## Version differences
 
-The stable release is v0.1.1. The v0.2.0-preview.2 prerelease contains the hardened workflow on `main`.
+The stable release is v0.1.1. The v0.2.0-preview.3 prerelease contains the hardened workflow on `main`.
 
 | Behavior | v0.2 preview / current `main` | Stable v0.1.1 |
 | --- | --- | --- |
@@ -65,7 +65,7 @@ Continue with the [user guide](USER_GUIDE.md), or see [troubleshooting](TROUBLES
 
 ## Build from source
 
-Developers need Node.js 22 or newer, stable Rust, and the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/) for their platform.
+Developers need Node.js 22 or newer, the Rust toolchain pinned by `rust-toolchain.toml`, and the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/) for their platform.
 
 ```bash
 git clone https://github.com/almondsun/insight.git

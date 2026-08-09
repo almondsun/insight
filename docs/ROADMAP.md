@@ -21,7 +21,6 @@ The next conventional product work is to strengthen distribution and usability w
 
 - Sign and notarize release artifacts for supported platforms.
 - Expand platform and installer smoke testing.
-- Continue expanding platform and installer smoke coverage.
 - Keep import compatibility aligned with documented Instagram JSON export changes.
 
 Specific items enter a release only after implementation and validation; their presence here does not mean they are available.
@@ -40,7 +39,9 @@ The following are not implemented or approved:
 - Production privacy parameters, reproducible traffic-analysis evidence, and independent audits.
 - A user consent, run, progress, ranking, refresh, or Fame-result export interface.
 
-Fame must progress in the locked order:
+The five Phase-1 specification documents now exist in the locked order below;
+their assumptions and provisional gates still require implementation evidence
+and independent reproduction before an integrated prototype is allowed:
 
 1. Formal threat model.
 2. Trust-bootstrap specification.

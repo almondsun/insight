@@ -12,8 +12,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    name: Validate release source
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Install Linux dependencies
+        run: >-
+          sudo apt-get update && sudo apt-get install -y
+          libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+        with:
+          toolchain: 1.97.1
+          components: rustfmt, clippy
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --omit=dev
+      - run: cargo metadata --locked --no-deps --format-version 1 > /dev/null
+      - run: npm run check
+      - run: cargo run --package fame-lab --locked -- corpus --input lab/fame/fixtures/corpus.json
+      - run: cargo run --package fame-lab --locked -- scheduler --manifest lab/fame/fixtures/manifest.json --tuple lab/fame/fixtures/tuple.json --username synthetic_alice
+
   build:
     name: Build ${{ matrix.target }}
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -45,7 +72,7 @@ jobs:
             test "${BASH_REMATCH[2]}" -le 65535
             bundle_version="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
           fi
-          grep -F "version=\"$expected\"" src-tauri/Cargo.toml
+          grep -F "version = \"$expected\"" Cargo.toml
           grep -F "\"version\":\"$bundle_version\"" src-tauri/tauri.conf.json
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -54,26 +81,26 @@ jobs:
           libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
         with:
-          toolchain: stable
+          toolchain: 1.97.1
           targets: ${{ matrix.target }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run tauri build -- --target ${{ matrix.target }}
+      - run: npm run tauri build -- --target ${{ matrix.target }} -- --locked
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: installers-${{ matrix.target }}
           if-no-files-found: error
           retention-days: 7
           path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*-setup.exe
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.AppImage
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.rpm
+            target/${{ matrix.target }}/release/bundle/**/*.msi
+            target/${{ matrix.target }}/release/bundle/**/*-setup.exe
+            target/${{ matrix.target }}/release/bundle/**/*.dmg
+            target/${{ matrix.target }}/release/bundle/**/*.AppImage
+            target/${{ matrix.target }}/release/bundle/**/*.deb
+            target/${{ matrix.target }}/release/bundle/**/*.rpm
 
   publish:
     name: Verify and publish release

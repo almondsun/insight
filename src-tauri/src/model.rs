@@ -41,11 +41,23 @@ pub struct Relationship {
 }
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RelationshipPage {
+    pub items: Vec<Relationship>,
+    pub next_cursor: Option<String>,
+}
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Change {
     pub username: String,
     pub profile_url: Option<String>,
     pub category: String,
     pub direction: String,
+}
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangePage {
+    pub items: Vec<Change>,
+    pub next_cursor: Option<String>,
 }
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

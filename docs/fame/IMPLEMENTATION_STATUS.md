@@ -7,7 +7,8 @@ Implemented in the application repository:
 - `fame-v1` scoring, provenance, deterministic ties, and ranking that rejects
   observations not marked authenticated. Cryptographic authentication is not
   implemented.
-- Versioned immutable Fame run, membership, and observation persistence.
+- A versioned Fame run, membership, and observation schema scaffold in a
+  separate persistence adapter. No production command writes these tables.
 - Compatibility-tuple, representable-geometry, and epoch staging domain models.
 - Deterministic 64-byte synthetic corpus records with validated,
   domain-separated release commitments.
@@ -18,6 +19,11 @@ Implemented in the application repository:
   scheduler, prerequisite, bootstrap, platform, PIR, mixnet, traffic, and
   evidence checks. External prerequisites report `BLOCKED` explicitly.
 - A read-only product roadmap view with no retrieval controls.
+
+All five frozen Phase-1 specification artifacts are present. Their existence is
+not evidence that the PIR, mixnet, bootstrap, platform, or traffic-analysis
+gates have passed; the next stage is evidence collection and feasibility
+validation against those documents.
 
 Not implemented or approved:
 

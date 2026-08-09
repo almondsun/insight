@@ -1,6 +1,6 @@
 # User Guide
 
-insIGht organizes official Instagram relationship exports into accounts and snapshots. An account is a local history; each import into that history is an immutable snapshot. This guide describes v0.2.0-preview.2 and current `main`; see [version differences](GETTING_STARTED.md#version-differences) for stable v0.1.1.
+insIGht organizes official Instagram relationship exports into accounts and snapshots. An account is a local history; each import into that history is an immutable snapshot. This guide describes v0.2.0-preview.3 and current `main`; see [version differences](GETTING_STARTED.md#version-differences) for stable v0.1.1.
 
 ## Accounts and snapshots
 
