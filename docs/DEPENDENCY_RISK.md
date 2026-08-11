@@ -1,14 +1,14 @@
 # Dependency Risk Register
 
-This register records accepted prerelease dependency risk without treating an open alert as fixed or dismissing it for dashboard appearance.
+This register records accepted prerelease dependency risk and its GitHub disposition without treating an unpatched dependency as fixed.
 
 ## `glib` GHSA-wrw7-89jp-8q8g
 
-Status: open, monitored, accepted for Nivune v0.2.0-preview.4 only
+Status: unpatched and monitored; GitHub alert dismissed as vulnerable code not used
 
 Severity: moderate
 
-Reviewed: 2026-08-11
+Reviewed and disposition recorded: 2026-08-11
 
 GitHub reports an unsound `VariantStrIter` implementation in `glib` 0.18.5. The fixed line begins at 0.20, while Tauri 2.11.5's Linux GTK3 dependency graph currently resolves through `gtk` 0.18 to `glib` 0.18.5.
 
@@ -23,10 +23,10 @@ A static Rust-source search across Nivune, its workspace crates, tools, and the 
 
 Decision:
 
-- Keep the Dependabot alert open.
+- Dismiss the GitHub alert as `not_used` because the affected iterator API has no identified caller in Nivune or its resolved consumers. The dismissal is an auditable triage decision, not a claim that `glib` 0.18.5 is patched.
 - Do not vendor an unaudited patch or force an incompatible `glib` major version.
 - Track Tauri/GTK upstream migration and update when the supported dependency graph permits it.
-- Reassess before a stable release, after relevant dependency changes, or if new reachability evidence appears.
+- Reassess before a stable release, after relevant dependency changes, or if new reachability evidence appears; reopen the alert if the affected API becomes reachable.
 
 Reproduce the local evidence with:
 
