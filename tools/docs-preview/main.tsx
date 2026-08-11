@@ -11,6 +11,7 @@ import "../../src/product.css";
 import "../../src/onboarding.css";
 import "../../src/smart-lists.css";
 import "../../src/import-warnings.css";
+import "./preview.css";
 
 const queryClient=new QueryClient({defaultOptions:{queries:{staleTime:Infinity,retry:false},mutations:{retry:false}}});
 ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><QueryClientProvider client={queryClient}><App client={docsApi}/></QueryClientProvider></React.StrictMode>);
