@@ -1,6 +1,6 @@
 # GitHub Repository Metadata
 
-Status: prepared for the Nivune repository rename; verify the live values after publication
+Status: applied and verified on 2026-08-11
 
 This file is the source of truth for Nivune's public GitHub About copy and repository-discovery topics. The live values must be read back after every update and kept aligned with this file.
 
