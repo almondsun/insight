@@ -1,11 +1,11 @@
 [package]
-name="insight"
+name="nivune"
 version.workspace=true
-description="Local-first Instagram relationship analytics"
+description="Private audience history from official platform exports"
 edition.workspace=true
 license.workspace=true
 [lib]
-name="insight_lib"
+name="nivune_lib"
 crate-type= ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build.workspace=true
@@ -22,3 +22,4 @@ walkdir.workspace=true
 csv.workspace=true
 tempfile.workspace=true
 fame-core={path="../crates/fame-core"}
+age = "0.11"

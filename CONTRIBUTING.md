@@ -19,7 +19,7 @@ For changes that affect query or import scalability, also run the opt-in
 250,000-account capacity regression:
 
 ```bash
-cargo test --package insight --lib handles_250k_unique_accounts_in_one_snapshot -- --ignored
+cargo test --package nivune --lib handles_250k_unique_accounts_in_one_snapshot -- --ignored
 ```
 
 ## Pull Requests

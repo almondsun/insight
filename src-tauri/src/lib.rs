@@ -1,8 +1,10 @@
+mod backup;
 mod db;
 mod export;
 mod fame_store;
 mod model;
 mod parser;
+mod source;
 pub use fame_core::{agent, corpus, fame, protocol};
 use model::*;
 use std::{
@@ -51,6 +53,20 @@ fn get_summary(
     })
 }
 #[tauri::command]
+fn get_trends(account_id: i64, s: State<AppState>) -> Result<Vec<TrendPoint>, String> {
+    with_db(&s, |connection| db::trends(connection, account_id))
+}
+#[tauri::command]
+fn get_relationship_history(
+    account_id: i64,
+    username: String,
+    s: State<AppState>,
+) -> Result<Vec<RelationshipHistoryPoint>, String> {
+    with_db(&s, |connection| {
+        db::relationship_history(connection, account_id, &username)
+    })
+}
+#[tauri::command]
 fn get_relationships(
     snapshot_id: i64,
     kind: String,
@@ -71,12 +87,14 @@ fn get_relationships(
     })
 }
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 fn compare_snapshots(
     from_snapshot_id: i64,
     to_snapshot_id: i64,
     category: String,
     search: String,
     after: Option<String>,
+    direction: Option<String>,
     limit: Option<usize>,
     s: State<AppState>,
 ) -> Result<ChangePage, String> {
@@ -88,6 +106,7 @@ fn compare_snapshots(
             &category,
             &search,
             after.as_deref(),
+            direction.as_deref(),
             limit.unwrap_or(200),
         )
     })
@@ -180,7 +199,7 @@ async fn choose_import(
         return Ok(None);
     };
     let path = selected.into_path().map_err(|e| e.to_string())?;
-    let parsed = tauri::async_runtime::spawn_blocking(move || parser::parse_path(&path))
+    let parsed = tauri::async_runtime::spawn_blocking(move || source::parse(&path))
         .await
         .map_err(|e| e.to_string())??;
     Ok(Some(store_preview(parsed, s)?))
@@ -191,6 +210,7 @@ fn commit_import(
     account_id: Option<i64>,
     label: String,
     owner_username: String,
+    observed_at: String,
     s: State<AppState>,
 ) -> Result<Snapshot, String> {
     let mut parsed = {
@@ -214,7 +234,7 @@ fn commit_import(
     }
     parsed.detected_username = Some(owner_username.to_string());
     let snapshot = with_db_mut(&s, |connection| {
-        db::commit(connection, &parsed, account_id, &label)
+        db::commit_at(connection, &parsed, account_id, &label, &observed_at)
     })?;
     let mut pending = s.pending.lock().map_err(lock_error)?;
     if pending
@@ -263,7 +283,7 @@ async fn export_report(
     }
     let db_path = s.db_path.clone();
     let export_format = format.clone();
-    let default_name = format!("insight-{kind}.{format}");
+    let default_name = format!("nivune-{kind}.{format}");
     let selected = tauri::async_runtime::spawn_blocking(move || {
         app.dialog()
             .file()
@@ -291,6 +311,7 @@ async fn export_changes(
     from_snapshot_id: i64,
     to_snapshot_id: i64,
     category: String,
+    direction: Option<String>,
     format: String,
     app: tauri::AppHandle,
     s: State<'_, AppState>,
@@ -303,7 +324,7 @@ async fn export_changes(
     }
     let db_path = s.db_path.clone();
     let extension = format.clone();
-    let default_name = format!("insight-changes-{category}.{format}");
+    let default_name = format!("nivune-changes-{category}.{format}");
     let selected = tauri::async_runtime::spawn_blocking(move || {
         app.dialog()
             .file()
@@ -325,11 +346,69 @@ async fn export_changes(
             from_snapshot_id,
             to_snapshot_id,
             &category,
+            direction.as_deref(),
             &format,
         )
     })
     .await
     .map_err(|e| e.to_string())??;
+    Ok(true)
+}
+
+fn valid_passphrase(passphrase: &str) -> Result<(), String> {
+    let length = passphrase.chars().count();
+    if !(12..=1024).contains(&length) {
+        return Err("Backup passphrase must contain between 12 and 1024 characters".into());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn create_encrypted_backup(
+    passphrase: String,
+    app: tauri::AppHandle,
+    s: State<'_, AppState>,
+) -> Result<bool, String> {
+    valid_passphrase(&passphrase)?;
+    let selected = tauri::async_runtime::spawn_blocking(move || {
+        app.dialog()
+            .file()
+            .add_filter("Encrypted audience backup", &["age"])
+            .set_file_name("audience-history.age")
+            .blocking_save_file()
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    let Some(selected) = selected else {
+        return Ok(false);
+    };
+    let path = selected.into_path().map_err(|error| error.to_string())?;
+    let connection = s.db.lock().map_err(lock_error)?;
+    backup::create(&connection, &path, passphrase)?;
+    Ok(true)
+}
+
+#[tauri::command]
+async fn restore_encrypted_backup(
+    passphrase: String,
+    app: tauri::AppHandle,
+    s: State<'_, AppState>,
+) -> Result<bool, String> {
+    valid_passphrase(&passphrase)?;
+    let selected = tauri::async_runtime::spawn_blocking(move || {
+        app.dialog()
+            .file()
+            .add_filter("Encrypted audience backup", &["age"])
+            .blocking_pick_file()
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    let Some(selected) = selected else {
+        return Ok(false);
+    };
+    let path = selected.into_path().map_err(|error| error.to_string())?;
+    let mut connection = s.db.lock().map_err(lock_error)?;
+    backup::restore(&mut connection, &path, passphrase)?;
     Ok(true)
 }
 pub fn run() {
@@ -339,7 +418,12 @@ pub fn run() {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             set_private_permissions(&dir, 0o700).map_err(std::io::Error::other)?;
-            let db_path = dir.join("insight.db");
+            let db_path = dir.join("nivune.db");
+            if let Some(parent) = dir.parent() {
+                let legacy_path = parent.join("app.insight.local").join("insight.db");
+                db::migrate_legacy_database(&legacy_path, &db_path)
+                    .map_err(std::io::Error::other)?;
+            }
             let conn = db::open(&db_path).map_err(std::io::Error::other)?;
             app.manage(AppState {
                 db: Mutex::new(conn),
@@ -353,6 +437,8 @@ pub fn run() {
             list_accounts,
             list_snapshots,
             get_summary,
+            get_trends,
+            get_relationship_history,
             get_relationships,
             compare_snapshots,
             rename_account,
@@ -363,8 +449,10 @@ pub fn run() {
             delete_snapshot,
             delete_account,
             export_report,
-            export_changes
+            export_changes,
+            create_encrypted_backup,
+            restore_encrypted_backup
         ])
         .run(tauri::generate_context!())
-        .expect("failed to run insIGht")
+        .expect("failed to run Nivune")
 }

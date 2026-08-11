@@ -1,10 +1,10 @@
-# insIGht Documentation
+# Nivune Documentation
 
-insIGht is a local-first desktop application for exploring follower and following relationships from an official Instagram JSON export. Start with the guide that matches what you want to do.
+Nivune is a local-first desktop application for exploring follower and following relationships from an official Instagram JSON export. Start with the guide that matches what you want to do.
 
-## Use insIGht
+## Use Nivune
 
-- [Install insIGht and complete your first import](GETTING_STARTED.md)
+- [Install Nivune and complete your first import](GETTING_STARTED.md)
 - [Explore relationships, snapshots, changes, and reports](USER_GUIDE.md)
 - [Understand what stays local and what is stored](PRIVACY.md)
 - [Solve import, comparison, export, or installation problems](TROUBLESHOOTING.md)

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable user-visible changes to insIGht are documented here. The project follows [Semantic Versioning](https://semver.org/).
+All notable user-visible changes to Nivune are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
@@ -55,7 +55,7 @@ All notable user-visible changes to insIGht are documented here. The project fol
 - Keeps source archives outside application storage
 - Performs no Instagram login, scraping, telemetry, or automatic network synchronization
 
-[Unreleased]: https://github.com/almondsun/insight/compare/v0.2.0-preview.3...HEAD
-[0.2.0-preview.3]: https://github.com/almondsun/insight/compare/v0.2.0-preview.2...v0.2.0-preview.3
-[0.1.1]: https://github.com/almondsun/insight/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/almondsun/insight/releases/tag/v0.1.0
+[Unreleased]: https://github.com/almondsun/nivune/compare/v0.2.0-preview.3...HEAD
+[0.2.0-preview.3]: https://github.com/almondsun/nivune/compare/v0.2.0-preview.2...v0.2.0-preview.3
+[0.1.1]: https://github.com/almondsun/nivune/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/almondsun/nivune/releases/tag/v0.1.0

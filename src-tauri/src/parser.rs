@@ -627,9 +627,11 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires INSIGHT_REAL_EXPORT to point to a private local export"]
+    #[ignore = "requires NIVUNE_REAL_EXPORT to point to a private local export"]
     fn parses_sanitized_counts_from_real_export() {
-        let path = std::env::var("INSIGHT_REAL_EXPORT").expect("INSIGHT_REAL_EXPORT is required");
+        let path = std::env::var("NIVUNE_REAL_EXPORT")
+            .or_else(|_| std::env::var("INSIGHT_REAL_EXPORT"))
+            .expect("NIVUNE_REAL_EXPORT is required");
         let parsed = parse_path(Path::new(&path)).expect("real export should parse");
         assert!(!parsed.followers.is_empty());
         assert!(!parsed.following.is_empty());

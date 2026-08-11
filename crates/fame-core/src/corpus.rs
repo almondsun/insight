@@ -154,7 +154,7 @@ fn release_commitment(
     records: &[EncodedCorpusRecord],
 ) -> String {
     let mut hasher = Sha256::new();
-    hasher.update(b"insight-synthetic-corpus-release-v1\0");
+    hasher.update(b"nivune-synthetic-corpus-release-v1\0");
     hasher.update(schema_version.to_be_bytes());
     hasher.update((release_id.len() as u64).to_be_bytes());
     hasher.update(release_id.as_bytes());

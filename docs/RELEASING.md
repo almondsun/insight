@@ -1,4 +1,4 @@
-# Releasing insIGht
+# Releasing Nivune
 
 GitHub Releases are the distribution channel for versioned desktop installers.
 
@@ -18,7 +18,7 @@ GitHub Releases are the distribution channel for versioned desktop installers.
 2. Create and push a semantic version tag:
 
    ```bash
-   git tag -a v0.2.0-preview.3 -m "insIGht 0.2.0-preview.3"
+   git tag -a v0.2.0-preview.3 -m "Nivune 0.2.0-preview.3"
    git push origin v0.2.0-preview.3
    ```
 

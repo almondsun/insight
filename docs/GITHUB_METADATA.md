@@ -1,8 +1,10 @@
 # GitHub Repository Metadata
 
-Status: applied and verified on 2026-08-08
+Status: prepared for the Nivune repository rename; verify the live values after publication
 
-This file is the source of truth for insIGht's public GitHub About copy and repository-discovery topics. The live values must be read back after every update and kept aligned with this file.
+This file is the source of truth for Nivune's public GitHub About copy and repository-discovery topics. The live values must be read back after every update and kept aligned with this file.
+
+The canonical repository is `almondsun/nivune`. GitHub may redirect former repository URLs, but documentation and automation must use the canonical name.
 
 ## About
 
@@ -12,7 +14,7 @@ This file is the source of truth for insIGht's public GitHub About copy and repo
 
 **Website**
 
-<https://github.com/almondsun/insight/releases/latest>
+<https://github.com/almondsun/nivune/releases/latest>
 
 ## Topics
 
@@ -44,18 +46,18 @@ Repository Markdown under `docs/` is the canonical documentation until a separat
 
 ## Applying the metadata
 
-With an authenticated GitHub CLI session authorized for `almondsun/insight`:
+With an authenticated GitHub CLI session authorized for `almondsun/nivune`:
 
 ```bash
-gh repo edit almondsun/insight \
+gh repo edit almondsun/nivune \
   --description "Local-first desktop analytics for official Instagram exports — followers, mutuals, history, and reports without login or cloud upload." \
-  --homepage "https://github.com/almondsun/insight/releases/latest"
+  --homepage "https://github.com/almondsun/nivune/releases/latest"
 ```
 
 Replace the topic set through the GitHub API:
 
 ```bash
-gh api --method PUT repos/almondsun/insight/topics \
+gh api --method PUT repos/almondsun/nivune/topics \
   -f 'names[]=instagram' \
   -f 'names[]=instagram-analytics' \
   -f 'names[]=instagram-export' \

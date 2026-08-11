@@ -1,28 +1,42 @@
 use crate::model::*;
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{backup::Backup, params, Connection, OpenFlags, OptionalExtension};
 #[cfg(test)]
 use std::collections::{BTreeMap, BTreeSet};
 use std::{path::Path, time::Duration};
+pub const APPLICATION_ID: i64 = 0x4E49_5655;
+const LEGACY_APPLICATION_ID: i64 = 0x494E_5347;
+
+pub fn is_compatible_application_id(value: i64) -> bool {
+    matches!(value, APPLICATION_ID | LEGACY_APPLICATION_ID)
+}
 pub fn open(path: &Path) -> Result<Connection, String> {
     prepare_private_database_file(path)?;
     let c = Connection::open(path).map_err(err)?;
     c.busy_timeout(Duration::from_secs(5)).map_err(err)?;
     c.pragma_update(None, "foreign_keys", "ON").map_err(err)?;
     c.pragma_update(None, "secure_delete", "ON").map_err(err)?;
+    c.pragma_update(None, "trusted_schema", "OFF")
+        .map_err(err)?;
     c.pragma_update(None, "journal_mode", "WAL").map_err(err)?;
     set_private_file_permissions(path)?;
     let version: i64 = c
         .pragma_query_value(None, "user_version", |row| row.get(0))
         .map_err(err)?;
-    if version > 2 {
+    if version > 3 {
         return Err(format!(
             "Database schema version {version} is newer than this app supports"
         ));
     }
+    let application_id: i64 = c
+        .pragma_query_value(None, "application_id", |row| row.get(0))
+        .map_err(err)?;
+    if application_id != 0 && !is_compatible_application_id(application_id) {
+        return Err("Database belongs to a different application".into());
+    }
     c.execute_batch(
         "BEGIN IMMEDIATE;
          CREATE TABLE IF NOT EXISTS accounts(id INTEGER PRIMARY KEY,label TEXT NOT NULL,username TEXT,created_at TEXT NOT NULL);
-         CREATE TABLE IF NOT EXISTS snapshots(id INTEGER PRIMARY KEY,account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,imported_at TEXT NOT NULL,source_name TEXT NOT NULL,state_hash TEXT NOT NULL,followers INTEGER NOT NULL,following INTEGER NOT NULL,UNIQUE(account_id,state_hash));
+         CREATE TABLE IF NOT EXISTS snapshots(id INTEGER PRIMARY KEY,account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,imported_at TEXT NOT NULL,observed_at TEXT,observed_at_source TEXT,source_name TEXT NOT NULL,state_hash TEXT NOT NULL,followers INTEGER NOT NULL,following INTEGER NOT NULL,UNIQUE(account_id,state_hash));
          CREATE TABLE IF NOT EXISTS relationships(snapshot_id INTEGER NOT NULL REFERENCES snapshots(id) ON DELETE CASCADE,kind TEXT NOT NULL,norm TEXT NOT NULL,username TEXT NOT NULL,profile_url TEXT,source_timestamp INTEGER,PRIMARY KEY(snapshot_id,kind,norm));
          CREATE INDEX IF NOT EXISTS idx_rel_snapshot_kind ON relationships(snapshot_id,kind);
          COMMIT;",
@@ -31,7 +45,72 @@ pub fn open(path: &Path) -> Result<Connection, String> {
     if version < 2 {
         crate::fame_store::migrate(&c)?;
     }
+    if version < 3 {
+        let has_observed_at = c
+            .prepare("PRAGMA table_info(snapshots)")
+            .map_err(err)?
+            .query_map([], |row| row.get::<_, String>(1))
+            .map_err(err)?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(err)?
+            .iter()
+            .any(|column| column == "observed_at");
+        if !has_observed_at {
+            c.execute_batch(
+                "ALTER TABLE snapshots ADD COLUMN observed_at TEXT;
+                 ALTER TABLE snapshots ADD COLUMN observed_at_source TEXT;",
+            )
+            .map_err(err)?;
+        }
+        c.execute_batch(
+            "BEGIN IMMEDIATE;
+             UPDATE snapshots SET observed_at=substr(imported_at,1,10), observed_at_source='legacy_import_time' WHERE observed_at IS NULL;
+             CREATE INDEX IF NOT EXISTS idx_snapshots_account_observed ON snapshots(account_id,observed_at DESC,id DESC);
+             CREATE INDEX IF NOT EXISTS idx_rel_kind_norm_snapshot ON relationships(kind,norm,snapshot_id);
+             PRAGMA user_version=3;
+             COMMIT;",
+        )
+        .map_err(err)?;
+    }
+    c.pragma_update(None, "application_id", APPLICATION_ID)
+        .map_err(err)?;
     Ok(c)
+}
+
+pub fn migrate_legacy_database(legacy: &Path, destination: &Path) -> Result<bool, String> {
+    if destination.exists() || !legacy.exists() {
+        return Ok(false);
+    }
+    let parent = destination
+        .parent()
+        .ok_or("Nivune database path has no parent directory")?;
+    let source =
+        Connection::open_with_flags(legacy, OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(err)?;
+    source.busy_timeout(Duration::from_secs(5)).map_err(err)?;
+    let temporary = tempfile::NamedTempFile::new_in(parent).map_err(|error| error.to_string())?;
+    let mut target = Connection::open(temporary.path()).map_err(err)?;
+    target
+        .pragma_update(None, "journal_mode", "DELETE")
+        .map_err(err)?;
+    Backup::new(&source, &mut target)
+        .and_then(|backup| backup.run_to_completion(128, Duration::from_millis(2), None))
+        .map_err(err)?;
+    target.close().map_err(|(_, error)| error.to_string())?;
+    source.close().map_err(|(_, error)| error.to_string())?;
+    let migrated = open(temporary.path())?;
+    migrated
+        .pragma_update(None, "journal_mode", "DELETE")
+        .map_err(err)?;
+    migrated.close().map_err(|(_, error)| error.to_string())?;
+    temporary
+        .as_file()
+        .sync_all()
+        .map_err(|error| error.to_string())?;
+    temporary
+        .persist_noclobber(destination)
+        .map_err(|error| error.to_string())?;
+    set_private_file_permissions(destination)?;
+    Ok(true)
 }
 
 #[cfg(unix)]
@@ -113,16 +192,18 @@ pub fn rename_account(c: &Connection, id: i64, label: &str) -> Result<Account, S
     ).map_err(err)
 }
 pub fn snapshots(c: &Connection, account: i64) -> Result<Vec<Snapshot>, String> {
-    let mut q=c.prepare("SELECT id,account_id,imported_at,source_name,followers,following FROM snapshots WHERE account_id=? ORDER BY imported_at DESC,id DESC").map_err(err)?;
+    let mut q=c.prepare("SELECT id,account_id,imported_at,observed_at,observed_at_source,source_name,followers,following FROM snapshots WHERE account_id=? ORDER BY observed_at DESC,id DESC").map_err(err)?;
     let rows = q
         .query_map([account], |r| {
             Ok(Snapshot {
                 id: r.get(0)?,
                 account_id: r.get(1)?,
                 imported_at: r.get(2)?,
-                source_name: r.get(3)?,
-                followers: r.get::<_, i64>(4)? as usize,
-                following: r.get::<_, i64>(5)? as usize,
+                observed_at: r.get(3)?,
+                observed_at_source: r.get(4)?,
+                source_name: r.get(5)?,
+                followers: r.get::<_, i64>(6)? as usize,
+                following: r.get::<_, i64>(7)? as usize,
             })
         })
         .map_err(err)?
@@ -130,12 +211,18 @@ pub fn snapshots(c: &Connection, account: i64) -> Result<Vec<Snapshot>, String> 
         .map_err(err);
     rows
 }
-pub fn commit(
+pub fn commit_at(
     c: &mut Connection,
     p: &ParsedImport,
     account: Option<i64>,
     label: &str,
+    observed_at: &str,
 ) -> Result<Snapshot, String> {
+    let observed_date = chrono::NaiveDate::parse_from_str(observed_at, "%Y-%m-%d")
+        .map_err(|_| "Observation date must be a valid calendar date".to_string())?;
+    if observed_date > chrono::Utc::now().date_naive() {
+        return Err("Observation date cannot be in the future".into());
+    }
     let owner = p
         .detected_username
         .as_deref()
@@ -189,7 +276,7 @@ pub fn commit(
         return Err("This relationship snapshot has already been imported for this account".into());
     }
     let now = chrono::Utc::now().to_rfc3339();
-    tx.execute("INSERT INTO snapshots(account_id,imported_at,source_name,state_hash,followers,following) VALUES(?,?,?,?,?,?)",params![aid,now,p.source_name,p.hash,p.followers.len() as i64,p.following.len() as i64]).map_err(err)?;
+    tx.execute("INSERT INTO snapshots(account_id,imported_at,observed_at,observed_at_source,source_name,state_hash,followers,following) VALUES(?,?,?,?,?,?,?,?)",params![aid,now,observed_at,"user_confirmed",p.source_name,p.hash,p.followers.len() as i64,p.following.len() as i64]).map_err(err)?;
     let sid = tx.last_insert_rowid();
     for (kind, map) in [("followers", &p.followers), ("following", &p.following)] {
         let mut stmt=tx.prepare("INSERT INTO relationships(snapshot_id,kind,norm,username,profile_url,source_timestamp) VALUES(?,?,?,?,?,?)").map_err(err)?;
@@ -210,10 +297,74 @@ pub fn commit(
         id: sid,
         account_id: aid,
         imported_at: now,
+        observed_at: observed_at.to_string(),
+        observed_at_source: "user_confirmed".into(),
         source_name: p.source_name.clone(),
         followers: p.followers.len(),
         following: p.following.len(),
     })
+}
+
+#[cfg(test)]
+pub fn commit(
+    c: &mut Connection,
+    p: &ParsedImport,
+    account: Option<i64>,
+    label: &str,
+) -> Result<Snapshot, String> {
+    commit_at(c, p, account, label, "2026-01-01")
+}
+
+pub fn trends(c: &Connection, account: i64) -> Result<Vec<TrendPoint>, String> {
+    let mut ordered = snapshots(c, account)?;
+    ordered.reverse();
+    ordered
+        .into_iter()
+        .map(|snapshot| {
+            let values = summary(c, account, Some(snapshot.id))?;
+            Ok(TrendPoint {
+                snapshot_id: snapshot.id,
+                observed_at: snapshot.observed_at,
+                followers: values.followers,
+                following: values.following,
+                mutuals: values.mutuals,
+                new_followers: values.new_followers,
+                lost_followers: values.lost_followers,
+            })
+        })
+        .collect()
+}
+
+pub fn relationship_history(
+    c: &Connection,
+    account: i64,
+    username: &str,
+) -> Result<Vec<RelationshipHistoryPoint>, String> {
+    if !crate::parser::is_valid_username(username) {
+        return Err("Invalid username".into());
+    }
+    let norm = crate::parser::normalize(username);
+    let mut statement = c
+        .prepare(
+            "SELECT s.id,s.observed_at,
+                    EXISTS(SELECT 1 FROM relationships r WHERE r.snapshot_id=s.id AND r.kind='followers' AND r.norm=?2),
+                    EXISTS(SELECT 1 FROM relationships r WHERE r.snapshot_id=s.id AND r.kind='following' AND r.norm=?2)
+             FROM snapshots s WHERE s.account_id=?1 ORDER BY s.observed_at,s.id",
+        )
+        .map_err(err)?;
+    let points = statement
+        .query_map(params![account, norm], |row| {
+            Ok(RelationshipHistoryPoint {
+                snapshot_id: row.get(0)?,
+                observed_at: row.get(1)?,
+                follows_you: row.get(2)?,
+                you_follow: row.get(3)?,
+            })
+        })
+        .map_err(err)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(err)?;
+    Ok(points)
 }
 #[cfg(test)]
 pub fn sets(c: &Connection, sid: i64) -> Result<(People, People), String> {
@@ -536,30 +687,32 @@ pub fn compare(c: &Connection, from: i64, to: i64) -> Result<Vec<Change>, String
     Ok(out)
 }
 
-fn ensure_immediately_prior(c: &Connection, from: i64, to: i64) -> Result<(), String> {
-    let (account, imported_at): (i64, String) = c
+fn ensure_comparable(c: &Connection, from: i64, to: i64) -> Result<(), String> {
+    if from == to {
+        return Err("Choose two different snapshots".into());
+    }
+    let account_from = c
         .query_row(
-            "SELECT account_id,imported_at FROM snapshots WHERE id=?",
-            [to],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .map_err(err)?;
-    let previous = c
-        .query_row(
-            "SELECT id FROM snapshots
-             WHERE account_id=?1 AND (imported_at < ?2 OR (imported_at = ?2 AND id < ?3))
-             ORDER BY imported_at DESC,id DESC LIMIT 1",
-            params![account, imported_at, to],
+            "SELECT account_id FROM snapshots WHERE id=?",
+            [from],
             |row| row.get::<_, i64>(0),
         )
         .optional()
         .map_err(err)?;
-    if previous != Some(from) {
-        return Err("Snapshots must be immediately adjacent imports".into());
+    let account_to = c
+        .query_row("SELECT account_id FROM snapshots WHERE id=?", [to], |row| {
+            row.get::<_, i64>(0)
+        })
+        .optional()
+        .map_err(err)?;
+    match (account_from, account_to) {
+        (Some(left), Some(right)) if left == right => Ok(()),
+        (None, _) | (_, None) => Err("Snapshot no longer exists".into()),
+        _ => Err("Snapshots must belong to the same account".into()),
     }
-    Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn changes_page(
     c: &Connection,
     from: i64,
@@ -567,11 +720,15 @@ pub fn changes_page(
     category: &str,
     search: &str,
     after: Option<&str>,
+    direction: Option<&str>,
     limit: usize,
 ) -> Result<ChangePage, String> {
     validate_page_inputs(search, after)?;
     category_predicate(category)?;
-    ensure_immediately_prior(c, from, to)?;
+    ensure_comparable(c, from, to)?;
+    if direction.is_some_and(|value| !matches!(value, "added" | "removed")) {
+        return Err("Unsupported change direction".into());
+    }
     let limit = limit.clamp(1, 500);
     let from_chosen = selected_relation_sql(category, "?1", "a");
     let to_chosen = selected_relation_sql(category, "?2", "a");
@@ -586,14 +743,22 @@ pub fn changes_page(
            SELECT t.norm,t.username,t.profile_url,'added' AS direction FROM to_chosen t
              LEFT JOIN from_chosen f ON f.norm=t.norm WHERE f.norm IS NULL
          )
-         SELECT norm,username,profile_url,direction FROM changes ORDER BY norm LIMIT ?5"
+         SELECT norm,username,profile_url,direction FROM changes
+         WHERE (?5='' OR direction=?5) ORDER BY norm LIMIT ?6"
     );
     let pattern = format!("%{}%", escape_like(search));
     let cursor = after.unwrap_or_default();
     let mut statement = c.prepare(&sql).map_err(err)?;
     let mut rows = statement
         .query_map(
-            params![from, to, pattern, cursor, (limit + 1) as i64],
+            params![
+                from,
+                to,
+                pattern,
+                cursor,
+                direction.unwrap_or_default(),
+                (limit + 1) as i64
+            ],
             |row| {
                 let norm: String = row.get(0)?;
                 Ok((
@@ -803,7 +968,7 @@ mod tests {
     }
 
     #[test]
-    fn pages_only_adjacent_snapshot_changes() {
+    fn pages_arbitrary_snapshot_changes() {
         let mut c = open(Path::new(":memory:")).unwrap();
         let first = commit(&mut c, &parsed(&["a"], &["b"], "1"), None, "me").unwrap();
         let second = commit(
@@ -821,10 +986,24 @@ mod tests {
         )
         .unwrap();
 
-        let page = changes_page(&c, second.id, third.id, "followers", "", None, 1).unwrap();
+        let page = changes_page(&c, second.id, third.id, "followers", "", None, None, 1).unwrap();
         assert_eq!(page.items.len(), 1);
         assert!(page.next_cursor.is_some());
-        assert!(changes_page(&c, first.id, third.id, "followers", "", None, 20).is_err());
+        let full_range =
+            changes_page(&c, first.id, third.id, "followers", "", None, None, 20).unwrap();
+        assert_eq!(full_range.items.len(), 3);
+        let gained = changes_page(
+            &c,
+            first.id,
+            third.id,
+            "followers",
+            "",
+            None,
+            Some("added"),
+            20,
+        )
+        .unwrap();
+        assert!(gained.items.iter().all(|item| item.direction == "added"));
     }
 
     #[test]
@@ -874,12 +1053,17 @@ mod tests {
         assert_eq!(
             c.pragma_query_value(None, "user_version", |row| row.get::<_, i64>(0))
                 .unwrap(),
-            2
+            3
+        );
+        assert_eq!(
+            c.pragma_query_value(None, "application_id", |row| row.get::<_, i64>(0))
+                .unwrap(),
+            APPLICATION_ID
         );
         c.execute("INSERT INTO accounts VALUES(1,'me',NULL,'now')", [])
             .unwrap();
         c.execute(
-            "INSERT INTO snapshots VALUES(1,1,'now','test','hash',1,1)",
+            "INSERT INTO snapshots(id,account_id,imported_at,observed_at,observed_at_source,source_name,state_hash,followers,following) VALUES(1,1,'2026-01-02T10:00:00Z','2026-01-02','legacy_import_time','test','hash',1,1)",
             [],
         )
         .unwrap();
@@ -895,18 +1079,96 @@ mod tests {
         assert_eq!(remaining, 0);
     }
 
+    #[test]
+    fn orders_trends_by_observation_date_and_tracks_relationship_history() {
+        let mut c = open(Path::new(":memory:")).unwrap();
+        let later = commit_at(
+            &mut c,
+            &parsed(&["alice", "bob"], &["alice"], "later"),
+            None,
+            "me",
+            "2026-03-15",
+        )
+        .unwrap();
+        let earlier = commit_at(
+            &mut c,
+            &parsed(&["bob"], &["alice"], "earlier"),
+            Some(later.account_id),
+            "me",
+            "2026-02-01",
+        )
+        .unwrap();
+        let points = trends(&c, later.account_id).unwrap();
+        assert_eq!(
+            points
+                .iter()
+                .map(|point| point.snapshot_id)
+                .collect::<Vec<_>>(),
+            [earlier.id, later.id]
+        );
+        assert_eq!((points[1].new_followers, points[1].lost_followers), (1, 0));
+        let history = relationship_history(&c, later.account_id, "alice").unwrap();
+        assert_eq!(history.len(), 2);
+        assert!(!history[0].follows_you && history[0].you_follow);
+        assert!(history[1].follows_you && history[1].you_follow);
+        assert!(commit_at(
+            &mut c,
+            &parsed(&["x"], &["y"], "bad"),
+            Some(later.account_id),
+            "me",
+            "not-a-date"
+        )
+        .is_err());
+    }
+
     #[cfg(unix)]
     #[test]
     fn creates_database_with_private_permissions() {
         use std::os::unix::fs::PermissionsExt;
         let directory = tempfile::tempdir().unwrap();
-        let path = directory.path().join("insight.db");
+        let path = directory.path().join("nivune.db");
         let connection = open(&path).unwrap();
         drop(connection);
         assert_eq!(
             std::fs::metadata(path).unwrap().permissions().mode() & 0o777,
             0o600
         );
+    }
+
+    #[test]
+    fn migrates_legacy_database_once_without_overwriting_nivune_data() {
+        let directory = tempfile::tempdir().unwrap();
+        let legacy = directory.path().join("insight.db");
+        let destination = directory.path().join("nivune.db");
+        let legacy_connection = open(&legacy).unwrap();
+        legacy_connection
+            .execute(
+                "INSERT INTO accounts(label,username,created_at) VALUES('legacy','owner','now')",
+                [],
+            )
+            .unwrap();
+        legacy_connection
+            .pragma_update(None, "application_id", 0)
+            .unwrap();
+        legacy_connection
+            .pragma_update(None, "journal_mode", "DELETE")
+            .unwrap();
+        drop(legacy_connection);
+        let legacy_before = std::fs::read(&legacy).unwrap();
+
+        assert!(migrate_legacy_database(&legacy, &destination).unwrap());
+        assert_eq!(std::fs::read(&legacy).unwrap(), legacy_before);
+        let nivune = open(&destination).unwrap();
+        let label: String = nivune
+            .query_row("SELECT label FROM accounts", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(label, "legacy");
+        let application_id: i64 = nivune
+            .pragma_query_value(None, "application_id", |row| row.get(0))
+            .unwrap();
+        assert_eq!(application_id, APPLICATION_ID);
+        drop(nivune);
+        assert!(!migrate_legacy_database(&legacy, &destination).unwrap());
     }
 
     #[test]
@@ -980,9 +1242,11 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires INSIGHT_REAL_EXPORT to point to a private local export"]
+    #[ignore = "requires NIVUNE_REAL_EXPORT to point to a private local export"]
     fn imports_real_export_through_sqlite() {
-        let source = std::env::var("INSIGHT_REAL_EXPORT").expect("INSIGHT_REAL_EXPORT is required");
+        let source = std::env::var("NIVUNE_REAL_EXPORT")
+            .or_else(|_| std::env::var("INSIGHT_REAL_EXPORT"))
+            .expect("NIVUNE_REAL_EXPORT is required");
         let mut parsed = parser::parse_path(Path::new(&source)).expect("real export should parse");
         if parsed.detected_username.is_none() {
             parsed.detected_username = Some("e2e_owner".into());
@@ -990,7 +1254,7 @@ mod tests {
         let expected_followers = parsed.followers.len();
         let expected_following = parsed.following.len();
         let dir = tempfile::tempdir().expect("temporary directory should be available");
-        let database = dir.path().join("insight.db");
+        let database = dir.path().join("nivune.db");
 
         let snapshot = {
             let mut connection = open(&database).expect("database should open");

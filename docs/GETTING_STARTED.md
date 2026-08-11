@@ -1,10 +1,10 @@
 # Getting Started
 
-This guide covers installing insIGht, requesting the right Instagram export, and creating your first local snapshot. Workflow instructions target the current `main` branch; the latest downloadable release has the differences documented below.
+This guide covers installing Nivune, requesting the right Instagram export, and creating your first local snapshot. Workflow instructions target current `main`; existing downloads retain the former insIGht name and have the differences documented below.
 
 ## 1. Download the right build
 
-Open the [v0.2.0-preview.3 prerelease](https://github.com/almondsun/insight/releases/tag/v0.2.0-preview.3) and choose an artifact for your system.
+Open the [v0.2.0-preview.3 prerelease](https://github.com/almondsun/nivune/releases/tag/v0.2.0-preview.3) and choose an artifact for your system.
 
 | System | Choose | Notes |
 | --- | --- | --- |
@@ -14,7 +14,7 @@ Open the [v0.2.0-preview.3 prerelease](https://github.com/almondsun/insight/rele
 | Fedora, RHEL, or compatible x86-64 | `x86_64.rpm` | Uses the system package manager. |
 | Other supported x86-64 Linux desktops | `amd64.AppImage` | Portable application image. |
 
-Preview artifacts are not code-signed or notarized. Review the release notes and verify the artifact against the release's `SHA256SUMS` file. Do not disable operating-system security features globally to install insIGht.
+Preview artifacts are not code-signed or notarized. Review the release notes and verify the artifact against the release's `SHA256SUMS` file. Do not disable operating-system security features globally to install Nivune or a former-name preview.
 
 Windows or macOS may require you to confirm that you trust an unknown developer. Linux AppImage users may need to mark the downloaded file as executable through file properties or `chmod +x`.
 
@@ -42,18 +42,18 @@ Instagram changes the wording and layout of Accounts Center periodically. In Ins
 5. Select **JSON**, not HTML.
 6. Create the export, then download the ZIP when Instagram says it is ready.
 
-Keep the ZIP private. It can contain considerably more personal information than insIGht reads.
+Keep the ZIP private. It can contain considerably more personal information than Nivune reads.
 
 ## 3. Import the archive
 
-Launch insIGht and choose one of these paths:
+Launch Nivune and choose one of these paths:
 
 - **Import file** for the complete Instagram ZIP.
 - **Folder** for the extracted root folder of that ZIP.
 
 Current `main` requires both the follower and following JSON files. HTML exports, individual JSON files, and partial exports are not supported. The v0.1.1 picker also displays individual JSON files, but a complete ZIP or extracted folder is still the recommended input.
 
-Before anything is written to the database, insIGht shows an import preview with the detected follower and following totals. Current `main` also asks you to confirm the archive owner's Instagram username. When owner metadata exists in the export, that value is shown read-only; otherwise, enter it yourself. Published v0.1.1 has a simpler preview without owner confirmation.
+Before anything is written to the database, Nivune shows an import preview with the detected follower and following totals. Current `main` also asks you to confirm the archive owner's Instagram username. When owner metadata exists in the export, that value is shown read-only; otherwise, enter it yourself. Published v0.1.1 has a simpler preview without owner confirmation.
 
 For a new account history, choose **Create new account** and provide a label. For a later export of the same account, add the snapshot to the already selected account.
 
@@ -68,8 +68,8 @@ Continue with the [user guide](USER_GUIDE.md), or see [troubleshooting](TROUBLES
 Developers need Node.js 22 or newer, the Rust toolchain pinned by `rust-toolchain.toml`, and the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/) for their platform.
 
 ```bash
-git clone https://github.com/almondsun/insight.git
-cd insight
+git clone https://github.com/almondsun/nivune.git
+cd nivune
 npm ci
 npm run tauri dev
 ```

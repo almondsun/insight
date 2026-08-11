@@ -1,5 +1,7 @@
 # Privacy and Data Handling
 
+> Current `main` can create and restore passphrase-encrypted age backups. The live SQLite database remains unencrypted; backup encryption does not change that local-storage boundary. Backup passphrases are used in memory for the requested operation and are not persisted by the app.
+
 This document describes the behavior implemented on the current `main` branch and explicitly identifies where published v0.1.1 differs. It separates shipped guarantees from proposed Fame research so users can make informed decisions.
 
 ## Version scope
@@ -10,13 +12,13 @@ Current `main` adds native-only import and export path mediation, required archi
 
 ## Current main application
 
-The released relationship-analytics workflow is local-first:
+The current relationship-analytics workflow is local-first:
 
 - You select an official Instagram JSON ZIP or extracted folder through a native file dialog.
 - Rust reads only recognized relationship files and optional owner metadata.
 - Parsed snapshots are stored in a local SQLite database.
 - Searches, comparisons, summaries, and report generation run on the device.
-- insIGht does not ask for Instagram credentials, connect to an Instagram account, scrape profiles, upload archives, or send usage telemetry.
+- Nivune does not ask for Instagram credentials, connect to an Instagram account, scrape profiles, upload archives, or send usage telemetry.
 - The source ZIP or folder is read in place and is not copied into application storage.
 
 The current `main` WebView content security policy permits application resources and Tauri IPC. Network retrieval is not exposed to the interface. In v0.1.1, file paths selected through the Tauri dialog plugin pass through the WebView command boundary.
@@ -34,11 +36,11 @@ The local database can contain:
 
 The database schema reserves tables for the Fame persistence foundation, but the released interface has no retrieval or run command that populates network observations.
 
-The database is stored as `insight.db` inside the operating system application-data directory resolved for the `app.insight.local` application identifier.
+The database is stored as `nivune.db` inside the operating system application-data directory resolved for `app.nivune.local`. On first launch, current `main` transactionally copies an existing former-name `app.insight.local/insight.db` into the Nivune location and retains the original as a recovery copy. Existing Nivune data is never overwritten by this migration.
 
 ## Data that is not stored
 
-insIGht does not retain the raw archive body, passwords, login sessions, cookies, biographies, posts, messages, photographs, or unrecognized export files. Import previews are held only in memory until confirmed, cancelled, replaced, or the application exits.
+Nivune does not retain the raw archive body, passwords, login sessions, cookies, biographies, posts, messages, photographs, or unrecognized export files. Import previews are held only in memory until confirmed, cancelled, replaced, or the application exits.
 
 ## Filesystem and parser protections
 
@@ -58,11 +60,11 @@ On current `main`, malformed relationship JSON, invalid usernames, partial relat
 
 ## What still depends on you
 
-The SQLite database is not encrypted by insIGht. Its confidentiality depends on operating-system account permissions, full-disk encryption, backups, and physical device security.
+The SQLite database is not encrypted by Nivune. Its confidentiality depends on operating-system account permissions, full-disk encryption, backups, and physical device security.
 
 CSV and JSON reports are ordinary files. Other applications, cloud-sync services, backups, or people with access to their destination may read them. Choose the destination deliberately and delete reports you no longer need.
 
-Instagram exports may contain much more information than insIGht reads. Store or delete the original archive according to your own security needs.
+Instagram exports may contain much more information than Nivune reads. Store or delete the original archive according to your own security needs.
 
 ## Fame roadmap boundary
 

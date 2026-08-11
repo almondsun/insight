@@ -17,7 +17,7 @@ body:
     id: reproduce
     attributes:
       label: Reproduction steps
-      placeholder: "1. Launch insIGht\n2. Import a sanitized fixture\n3. ..."
+      placeholder: "1. Launch Nivune\n2. Import a sanitized fixture\n3. ..."
     validations:
       required: true
   - type: dropdown
@@ -30,7 +30,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: insIGht version or commit
+      label: Nivune version or commit
     validations:
       required: true
   - type: textarea

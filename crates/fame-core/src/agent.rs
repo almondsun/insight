@@ -246,7 +246,7 @@ impl LabParticipationAgent {
 
 fn make_lab_operation(slot: u64, lookup: Option<&PrivateLookup>) -> LabOperation {
     let mut hasher = Sha256::new();
-    hasher.update(b"insight-lab-operation-v1\0");
+    hasher.update(b"nivune-lab-operation-v1\0");
     hasher.update(slot.to_be_bytes());
     match lookup {
         Some(lookup) => {

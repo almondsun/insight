@@ -24,7 +24,7 @@ See [Privacy and Data Handling](PRIVACY.md#filesystem-and-parser-protections) fo
 
 ## The owner username is missing or rejected
 
-On current `main`, some exports do not include owner metadata in a form insIGht recognizes. Enter the Instagram username that owns the archive. Use only the username, without `@` or a profile URL. Published v0.1.1 does not request explicit owner confirmation.
+On current `main`, some exports do not include owner metadata in a form Nivune recognizes. Enter the Instagram username that owns the archive. Use only the username, without `@` or a profile URL. Published v0.1.1 does not request explicit owner confirmation.
 
 When owner metadata is present, current `main` requires the confirmation to match it after trimming and case normalization. If the detected owner is wrong, cancel the import and verify that you selected the intended account's complete export.
 
@@ -36,15 +36,15 @@ Snapshot identity is based on normalized follower and following membership, not 
 
 Changes require at least two snapshots in the same local account history. Confirm that both exports were added to the same selected account and that the intended relationship category and search field are active.
 
-An empty result can also be correct: no usernames in that category changed between the selected snapshot and its immediately prior import.
+An empty result can also be correct: no usernames in that category changed between the two selected snapshots.
 
 ## CSV or JSON export was not created
 
-Cancelling the native save dialog intentionally creates no file. Try again and choose a writable destination. Accounts view exports the active relationship category; Changes view exports additions and removals for that category and requires an immediately prior snapshot.
+Cancelling the native save dialog intentionally creates no file. Try again and choose a writable destination. Relationships exports the active category; Changes exports the selected comparison, category, and smart-list direction.
 
 ## Windows or macOS warns about an unknown developer
 
-Current release artifacts are unsigned and not notarized. Verify that the file came from the official [almondsun/insight release](https://github.com/almondsun/insight/releases/latest), review its release notes, and compare its SHA-256 digest with GitHub's displayed digest before deciding whether to proceed.
+Current release artifacts are unsigned and not notarized. Verify that the file came from the official [almondsun/nivune release](https://github.com/almondsun/nivune/releases/latest), review its release notes, and compare its SHA-256 digest with GitHub's displayed digest before deciding whether to proceed.
 
 Do not disable SmartScreen, Gatekeeper, antivirus, or other operating-system protections globally.
 
@@ -54,6 +54,6 @@ Version 0.1.1 publishes a macOS Apple Silicon (`aarch64`) artifact only. Intel m
 
 ## I found a bug
 
-Read [SUPPORT.md](../SUPPORT.md), then use the structured bug form. Include the insIGht version, operating system, expected behavior, actual behavior, and reproducible steps using sanitized data.
+Read [SUPPORT.md](../SUPPORT.md), then use the structured bug form. Include the Nivune version, operating system, expected behavior, actual behavior, and reproducible steps using sanitized data.
 
 Never attach a real Instagram archive, SQLite database, username list, local path, or login secret.

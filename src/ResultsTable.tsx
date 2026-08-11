@@ -16,6 +16,7 @@ type Props = {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
+  onSelect?: (username: string) => void;
 };
 
 export function ResultsTable({
@@ -26,6 +27,7 @@ export function ResultsTable({
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
+  onSelect,
 }: Props) {
   if (mode === "changes" && !hasPreviousSnapshot) {
     return (
@@ -46,7 +48,7 @@ export function ResultsTable({
         const direction = "direction" in row ? row.direction : undefined;
         const label = direction ?? labels[(row as Relationship).kind] ?? (row as Relationship).kind;
         return (
-          <div className="tr" key={`${row.username}-${direction ?? ""}`}>
+          <div className={`tr ${onSelect ? "selectable" : ""}`} key={`${row.username}-${direction ?? ""}`} onClick={()=>onSelect?.(row.username)}>
             <div className="account">
               <div className="avatar">{row.username.slice(0, 2).toUpperCase()}</div>
               <div>

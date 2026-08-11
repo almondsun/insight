@@ -14,7 +14,7 @@ Protocol: [PIR Benchmark Protocol](PIR_BENCHMARK_PROTOCOL.md)
 - Git description: `v0.0.0-10-g859cafa`
 - Commit date: 2026-01-05
 - License: Apache-2.0
-- Checkout location: isolated temporary directory outside the insIGht tree
+- Checkout location: isolated temporary directory outside the Nivune tree
 - Upstream status: explicitly unsupported and provided without correctness or
   security guarantees
 

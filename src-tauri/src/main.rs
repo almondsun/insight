@@ -1,3 +1,3 @@
 fn main() {
-    insight_lib::run();
+    nivune_lib::run();
 }

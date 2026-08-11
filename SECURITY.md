@@ -18,8 +18,8 @@ Include reproduction steps, affected versions or commits, impact, and a minimal 
 
 ## Data Boundary
 
-insIGht is local-first and does not require Instagram login details or remote services. Imported archives are untrusted input. Reports and the local SQLite database may contain personal information and should be handled accordingly.
+Nivune is local-first and does not require Instagram login details or remote services. Imported archives are untrusted input. Reports and the local SQLite database may contain personal information and should be handled accordingly.
 
-The current database is not encrypted by insIGht. Fame networking remains unavailable; its proposed trust and network boundaries are documented separately and must not be described as production security guarantees.
+The current database is not encrypted by Nivune. Fame networking remains unavailable; its proposed trust and network boundaries are documented separately and must not be described as production security guarantees.
 
 See [Privacy and Data Handling](docs/PRIVACY.md) for the complete current-product boundary.

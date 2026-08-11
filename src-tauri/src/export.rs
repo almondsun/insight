@@ -150,6 +150,7 @@ pub fn changes(
     from_snapshot_id: i64,
     to_snapshot_id: i64,
     category: &str,
+    direction: Option<&str>,
     format: &str,
 ) -> Result<(), String> {
     if !matches!(format, "json" | "csv") {
@@ -165,6 +166,7 @@ pub fn changes(
         category,
         "",
         None,
+        direction,
         1,
     )?;
     let result = match format {
@@ -175,6 +177,7 @@ pub fn changes(
                 from_snapshot_id,
                 to_snapshot_id,
                 category,
+                direction,
             )
         }),
         "csv" => write_atomically(path, |file| {
@@ -184,6 +187,7 @@ pub fn changes(
                 from_snapshot_id,
                 to_snapshot_id,
                 category,
+                direction,
             )
         }),
         _ => Err("Unsupported export format".into()),
@@ -198,6 +202,7 @@ fn change_json(
     from_snapshot_id: i64,
     to_snapshot_id: i64,
     category: &str,
+    direction: Option<&str>,
 ) -> Result<(), String> {
     let mut writer = BufWriter::new(file);
     write!(writer, "{{\"schemaVersion\":1,\"generatedAt\":").map_err(|error| error.to_string())?;
@@ -216,6 +221,7 @@ fn change_json(
         from_snapshot_id,
         to_snapshot_id,
         category,
+        direction,
         |row, first| {
             if !first {
                 writer.write_all(b",").map_err(|error| error.to_string())?;
@@ -235,6 +241,7 @@ fn change_csv(
     from_snapshot_id: i64,
     to_snapshot_id: i64,
     category: &str,
+    direction: Option<&str>,
 ) -> Result<(), String> {
     let mut writer = csv::Writer::from_writer(file);
     writer
@@ -245,6 +252,7 @@ fn change_csv(
         from_snapshot_id,
         to_snapshot_id,
         category,
+        direction,
         |row, _| {
             writer
                 .write_record([
@@ -264,6 +272,7 @@ fn stream_changes(
     from_snapshot_id: i64,
     to_snapshot_id: i64,
     category: &str,
+    direction: Option<&str>,
     mut consume: impl FnMut(&Change, bool) -> Result<(), String>,
 ) -> Result<(), String> {
     let mut cursor = None;
@@ -276,6 +285,7 @@ fn stream_changes(
             category,
             "",
             cursor.as_deref(),
+            direction,
             EXPORT_PAGE_SIZE,
         )?;
         for row in &page.items {
@@ -325,7 +335,7 @@ mod tests {
             .unwrap();
         connection
             .execute(
-                "INSERT INTO snapshots VALUES(1,1,'now','test','hash',1201,0)",
+                "INSERT INTO snapshots(id,account_id,imported_at,observed_at,observed_at_source,source_name,state_hash,followers,following) VALUES(1,1,'now','2026-01-01','user_confirmed','test','hash',1201,0)",
                 [],
             )
             .unwrap();
@@ -388,7 +398,7 @@ mod tests {
             .unwrap();
         writer
             .execute(
-                "INSERT INTO snapshots VALUES(1,1,'now','test','hash',600,0)",
+                "INSERT INTO snapshots(id,account_id,imported_at,observed_at,observed_at_source,source_name,state_hash,followers,following) VALUES(1,1,'now','2026-01-01','user_confirmed','test','hash',600,0)",
                 [],
             )
             .unwrap();

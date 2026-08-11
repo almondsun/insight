@@ -16,9 +16,30 @@ pub struct Snapshot {
     pub id: i64,
     pub account_id: i64,
     pub imported_at: String,
+    pub observed_at: String,
+    pub observed_at_source: String,
     pub source_name: String,
     pub followers: usize,
     pub following: usize,
+}
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrendPoint {
+    pub snapshot_id: i64,
+    pub observed_at: String,
+    pub followers: usize,
+    pub following: usize,
+    pub mutuals: usize,
+    pub new_followers: usize,
+    pub lost_followers: usize,
+}
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelationshipHistoryPoint {
+    pub snapshot_id: i64,
+    pub observed_at: String,
+    pub follows_you: bool,
+    pub you_follow: bool,
 }
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

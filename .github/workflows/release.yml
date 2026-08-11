@@ -145,7 +145,7 @@ jobs:
           if [[ "$RELEASE_TAG" == *-* ]]; then
             notes_file="docs/releases/${RELEASE_TAG}.md"
             test -f "$notes_file" || { echo "Missing release notes: $notes_file" >&2; exit 1; }
-            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --prerelease --title "insIGht $RELEASE_TAG" --notes-file "$notes_file"
+            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --prerelease --title "Nivune $RELEASE_TAG" --notes-file "$notes_file"
           else
-            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --draft --title "insIGht $RELEASE_TAG" --notes "Draft stable release. Complete manual platform verification before publishing."
+            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --draft --title "Nivune $RELEASE_TAG" --notes "Draft stable release. Complete manual platform verification before publishing."
           fi

@@ -3,7 +3,7 @@ name = "fame-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Network-independent Fame scoring and protocol foundations for insIGht"
+description = "Network-independent Fame scoring and protocol foundations for Nivune"
 
 [dependencies]
 chrono.workspace = true

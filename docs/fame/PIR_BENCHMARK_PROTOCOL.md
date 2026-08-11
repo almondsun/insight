@@ -106,7 +106,7 @@ For every evaluated repository:
 6. Produce an SBOM, source and build provenance record, reproducible build
    instructions, and independently reproduced binary digest.
 
-Nothing is vendored or merged into insIGht during benchmarking. Vendoring is a
+Nothing is vendored or merged into Nivune during benchmarking. Vendoring is a
 separate decision after security, feasibility, license, and audit gates pass,
 and is limited to the smallest required modules.
 

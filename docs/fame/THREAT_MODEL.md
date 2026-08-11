@@ -12,7 +12,7 @@ Next derived document: trust-bootstrap specification
 
 This document defines the security and privacy claims that a future Fame
 enrichment system must satisfy. It is intentionally separate from the current
-insIGht application, which remains an offline archive-analysis tool.
+Nivune application, which remains an offline archive-analysis tool.
 
 The proposed system ranks accounts from an imported snapshot using public
 follower and following counts. It must not send the imported account, its

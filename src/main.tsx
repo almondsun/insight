@@ -6,6 +6,9 @@ import "./styles.css";
 import "./logo.css";
 import "./theme.css";
 import "./pagination.css";
+import "./product.css";
+import "./onboarding.css";
+import "./smart-lists.css";
 
 const queryClient = new QueryClient({defaultOptions:{queries:{staleTime:10_000,retry:false}}});
 ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><QueryClientProvider client={queryClient}><App /></QueryClientProvider></React.StrictMode>);
