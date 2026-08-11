@@ -14,7 +14,7 @@ collect(join(root,"docs"));
 
 const failures=[];
 const anchors=new Map();
-function slug(value){return value.toLowerCase().trim().replace(/<[^>]+>/g,"").replace(/[^\p{L}\p{N}\s_-]/gu,"").replace(/\s+/g,"-");}
+function slug(value){return value.toLowerCase().trim().replace(/[<>]/g,"").replace(/[^\p{L}\p{N}\s_-]/gu,"").replace(/\s+/g,"-");}
 function fileAnchors(path){
   if(anchors.has(path))return anchors.get(path);
   const found=new Set();
