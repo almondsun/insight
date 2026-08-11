@@ -1085,7 +1085,7 @@ checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
 name = "fame-core"
-version = "0.2.0-preview.3"
+version = "0.2.0-preview.4"
 dependencies = [
  "chrono",
  "serde",
@@ -1094,7 +1094,7 @@ dependencies = [
 
 [[package]]
 name = "fame-lab"
-version = "0.2.0-preview.3"
+version = "0.2.0-preview.4"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2427,7 +2427,7 @@ checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
 name = "nivune"
-version = "0.2.0-preview.3"
+version = "0.2.0-preview.4"
 dependencies = [
  "age",
  "chrono",

@@ -1,10 +1,10 @@
 # Getting Started
 
-This guide covers installing Nivune, requesting the right Instagram export, and creating your first local snapshot. Workflow instructions target current `main`; existing downloads retain the former insIGht name and have the differences documented below.
+This guide covers installing Nivune, requesting the right Instagram export, and creating your first local snapshot. The workflow targets Nivune Preview 4 and current `main`; older downloads retain the former name and differ as documented below.
 
 ## 1. Download the right build
 
-Open the [v0.2.0-preview.3 prerelease](https://github.com/almondsun/nivune/releases/tag/v0.2.0-preview.3) and choose an artifact for your system.
+Open the [v0.2.0-preview.4 prerelease](https://github.com/almondsun/nivune/releases/tag/v0.2.0-preview.4) and choose an artifact for your system.
 
 | System | Choose | Notes |
 | --- | --- | --- |
@@ -20,16 +20,18 @@ Windows or macOS may require you to confirm that you trust an unknown developer.
 
 ## Version differences
 
-The stable release is v0.1.1. The v0.2.0-preview.3 prerelease contains the hardened workflow on `main`.
+Preview 4 is the first Nivune-branded download. Preview 3 and stable v0.1.1 use the former name; v0.1.1 also predates the hardened native path and complete-export boundary.
 
-| Behavior | v0.2 preview / current `main` | Stable v0.1.1 |
-| --- | --- | --- |
-| Import and export path selection | Native code owns the dialog result; the WebView cannot submit arbitrary paths. | The WebView supplies paths selected through the Tauri dialog plugin. |
-| Accepted import selection | Complete ZIP or extracted folder containing both relationship directions. | ZIP, folder, or individual JSON; partial relationship data is accepted. |
-| Archive owner | Must be detected or entered and confirmed before commit. | No explicit owner-confirmation step. |
-| Folder protections | Entry, depth, relevant-file, per-file, and aggregate relevant-byte limits. | Relevant-file and per-file limits; no folder entry, depth, or aggregate-byte limit. |
+| Behavior | Preview 4 / current `main` | Former Preview 3 | Stable v0.1.1 |
+| --- | --- | --- | --- |
+| Product identity | Nivune data-iris identity and one-time legacy database migration. | Former identity and storage path. | Former identity and storage path. |
+| Product workflow | Observation dates, trends, arbitrary comparisons, relationship timelines, smart lists, and encrypted backups. | Hardened imports and relationship analytics without the Preview 4 workflow additions. | Basic relationship lists and immediate-snapshot comparisons. |
+| Import and export paths | Native code owns dialog results; the WebView cannot submit arbitrary paths. | Same native mediation. | The WebView supplies paths selected through the Tauri dialog plugin. |
+| Accepted import selection | Complete ZIP or extracted folder containing both relationship directions. | Same complete-export requirement. | ZIP, folder, or individual JSON; partial relationship data is accepted. |
+| Archive owner | Must be detected or entered and confirmed before commit. | Same owner confirmation. | No explicit owner-confirmation step. |
+| Folder protections | Entry, depth, compressed/decompressed work, relationship-count, and aggregate limits. | Hardened boundary, without subsequent parser fixes documented in Preview 4 notes. | Relevant-file and per-file limits; no folder entry, depth, or aggregate-byte limit. |
 
-Both versions perform local analytics without Instagram credentials, scraping, archive upload, or telemetry. Use the v0.2 preview for the strongest implemented filesystem and parser boundaries.
+All versions perform local analytics without Instagram credentials, scraping, archive upload, or telemetry. Use Preview 4 for the current product and strongest implemented parser boundary.
 
 ## 2. Request a JSON export from Instagram
 
@@ -48,12 +50,16 @@ Keep the ZIP private. It can contain considerably more personal information than
 
 Launch Nivune and choose one of these paths:
 
-- **Import file** for the complete Instagram ZIP.
+- **Import ZIP** for the complete Instagram ZIP.
 - **Folder** for the extracted root folder of that ZIP.
 
-Current `main` requires both the follower and following JSON files. HTML exports, individual JSON files, and partial exports are not supported. The v0.1.1 picker also displays individual JSON files, but a complete ZIP or extracted folder is still the recommended input.
+Preview 4 and current `main` require both the follower and following JSON files. HTML exports, individual JSON files, and partial exports are not supported. The v0.1.1 picker also displays individual JSON files, but a complete ZIP or extracted folder is still the recommended input.
 
-Before anything is written to the database, Nivune shows an import preview with the detected follower and following totals. Current `main` also asks you to confirm the archive owner's Instagram username. When owner metadata exists in the export, that value is shown read-only; otherwise, enter it yourself. Published v0.1.1 has a simpler preview without owner confirmation.
+Before anything is written to the database, Nivune shows an import preview with the source, detected totals, parser warnings, observation date, and archive owner. When owner metadata exists in the export, that value is shown read-only; otherwise, enter it yourself. Published v0.1.1 has a simpler preview without owner confirmation.
+
+![Nivune first-use privacy introduction with synthetic documentation state](assets/screenshots/onboarding.png)
+
+![Nivune import preview showing synthetic totals, owner, observation date, and warning](assets/screenshots/import-preview.png)
 
 For a new account history, choose **Create new account** and provide a label. For a later export of the same account, add the snapshot to the already selected account.
 

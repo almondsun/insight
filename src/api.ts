@@ -30,3 +30,5 @@ export const api={
   createEncryptedBackup:(passphrase:string)=>invoke<boolean>("create_encrypted_backup",{passphrase}),
   restoreEncryptedBackup:(passphrase:string)=>invoke<boolean>("restore_encrypted_backup",{passphrase})
 };
+
+export type NivuneApi = typeof api;

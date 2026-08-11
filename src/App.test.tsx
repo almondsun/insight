@@ -22,6 +22,7 @@ function response(command:string,args?:Record<string,unknown>){
     case "get_relationships":return {items:[{username:"alice",profileUrl:null,kind:args?.kind}],nextCursor:null};
     case "compare_snapshots":return {items:[{username:"alice",profileUrl:null,category:"followers",direction:"added"}],nextCursor:null};
     case "get_fame_foundation_status":return {implementationStage:"synthetic_foundation",formulaVersion:"fame-v1",protocolSchemaVersion:1,fixedCorpusRecordBytes:64,networkRetrievalAvailable:false,architectureStatus:"frozen",nextStage:"formal",completedFoundations:["versioned scoring"],blockedGates:["independent PIR operators"]};
+    case "choose_import":return {token:"preview-token",sourceName:"export.zip",detectedUsername:"owner",followers:2,following:1,warnings:["The relationship files are empty."]};
     case "rename_account":return {...account,label:args?.label};
     case "create_encrypted_backup":return true;
     case "restore_encrypted_backup":return true;
@@ -127,5 +128,18 @@ describe("desktop workflow",()=>{
     fireEvent.change(screen.getByLabelText("Confirm backup passphrase"),{target:{value:"a secure backup phrase"}});
     await userEvent.click(create);
     await waitFor(()=>expect(invoke).toHaveBeenCalledWith("create_encrypted_backup",{passphrase:"a secure backup phrase"}));
+  });
+
+  it("shows parser warnings in the import preview",async()=>{
+    renderApp();
+    await userEvent.click(await screen.findByRole("button",{name:"Import ZIP"}));
+    expect((await screen.findByRole("list",{name:"Import warnings"})).textContent).toContain("The relationship files are empty.");
+  });
+
+  it("uses neutral guidance when no comparison pair is available",async()=>{
+    invoke.mockImplementation((command,args)=>Promise.resolve(command==="list_snapshots"?[newest]:response(command,args)));
+    renderApp();
+    await userEvent.click(await screen.findByRole("button",{name:"Changes"}));
+    expect(await screen.findByText("Choose two different snapshots to compare relationship changes.")).toBeTruthy();
   });
 });

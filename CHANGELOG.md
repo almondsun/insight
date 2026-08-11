@@ -4,6 +4,27 @@ All notable user-visible changes to Nivune are documented here. The project foll
 
 ## [Unreleased]
 
+## [0.2.0-preview.4] - 2026-08-11
+
+### Added
+
+- Introduced the Nivune identity and original data-iris application artwork
+- Added user-confirmed observation dates, follower/following/mutual trends, arbitrary two-snapshot comparisons, relationship timelines, and direction-filtered smart lists
+- Added authenticated passphrase-encrypted portable backups with bounded, integrity-checked restore
+- Added a synthetic Playwright product tour and automated Markdown, asset, anchor, and screenshot validation
+
+### Changed
+
+- Migrated former-name local history into the Nivune application-data location once while retaining the original database as a recovery copy
+- Updated all current-product documentation and download guidance for the first Nivune-branded prerelease
+- Display parser warnings in the import preview and use comparison guidance that does not assume adjacent snapshots
+
+### Security
+
+- Hardened ZIP64 metadata and compressed-work limits, relationship-count limits, native paging inputs, and atomic transaction-consistent report export
+- Added encrypted-backup validation without claiming that the live SQLite database is encrypted
+- Documented the unresolved transitive `glib` GHSA-wrw7-89jp-8q8g advisory. Static source inspection found no Nivune or framework call to the affected iterator API; the alert remains open pending an upstream Tauri/GTK dependency update
+
 ## [0.2.0-preview.3] - 2026-08-08
 
 ### Changed
@@ -55,7 +76,8 @@ All notable user-visible changes to Nivune are documented here. The project foll
 - Keeps source archives outside application storage
 - Performs no Instagram login, scraping, telemetry, or automatic network synchronization
 
-[Unreleased]: https://github.com/almondsun/nivune/compare/v0.2.0-preview.3...HEAD
+[Unreleased]: https://github.com/almondsun/nivune/compare/v0.2.0-preview.4...HEAD
+[0.2.0-preview.4]: https://github.com/almondsun/nivune/compare/v0.2.0-preview.3...v0.2.0-preview.4
 [0.2.0-preview.3]: https://github.com/almondsun/nivune/compare/v0.2.0-preview.2...v0.2.0-preview.3
 [0.1.1]: https://github.com/almondsun/nivune/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/almondsun/nivune/releases/tag/v0.1.0

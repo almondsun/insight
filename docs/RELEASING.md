@@ -2,7 +2,7 @@
 
 GitHub Releases are the distribution channel for versioned desktop installers.
 
-## Before The First Release
+## Release checklist
 
 - Verify import, persistence, search, comparison, deletion, and export workflows with sanitized fixtures.
 - Build and launch the application on Windows, macOS, and Linux.
@@ -11,6 +11,9 @@ GitHub Releases are the distribution channel for versioned desktop installers.
 - Prepare concise release notes with user-visible changes, known limitations, and upgrade notes.
 - Verify the platform and architecture table in [Getting Started](GETTING_STARTED.md) against the actual release assets.
 - Verify that [GitHub repository metadata](GITHUB_METADATA.md) still matches the live About panel.
+- Run `npm run docs:check` and visually inspect every changed screenshot.
+- Install the pinned screenshot browser with `npx playwright install chromium` when setting up a new development machine.
+- Review open dependency alerts. Document accepted prerelease risk; never dismiss or vendor a fix solely to make the dashboard green.
 
 ## Creating A Release
 
@@ -18,8 +21,8 @@ GitHub Releases are the distribution channel for versioned desktop installers.
 2. Create and push a semantic version tag:
 
    ```bash
-   git tag -a v0.2.0-preview.3 -m "Nivune 0.2.0-preview.3"
-   git push origin v0.2.0-preview.3
+   git tag -a v0.2.0-preview.4 -m "Nivune 0.2.0-preview.4"
+   git push origin v0.2.0-preview.4
    ```
 
 3. The `Release` GitHub Actions workflow builds artifacts on Windows, macOS, and Linux.
@@ -42,6 +45,6 @@ Use semantic versioning:
 - Minor: compatible features
 - Major: incompatible persisted-data, import, report, CLI, or public interface changes
 
-Pre-release tags such as `v0.2.0-preview.3` are published automatically only
+Pre-release tags such as `v0.2.0-preview.4` are published automatically only
 after the cross-platform build and checksum finalizer pass. Preview artifacts
 remain unsigned until signing credentials are configured and verified.

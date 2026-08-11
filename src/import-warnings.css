@@ -1,0 +1,10 @@
+.import-warnings {
+  margin: 7px 0 0;
+  padding-left: 18px;
+  color: #8a5a10;
+  font-size: 13px;
+}
+
+.import-warnings li + li {
+  margin-top: 3px;
+}

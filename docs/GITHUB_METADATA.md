@@ -14,7 +14,7 @@ The canonical repository is `almondsun/nivune`. GitHub may redirect former repos
 
 **Website**
 
-<https://github.com/almondsun/nivune/releases/latest>
+<https://github.com/almondsun/nivune/releases>
 
 ## Topics
 
@@ -51,7 +51,7 @@ With an authenticated GitHub CLI session authorized for `almondsun/nivune`:
 ```bash
 gh repo edit almondsun/nivune \
   --description "Local-first desktop analytics for official Instagram exports — followers, mutuals, history, and reports without login or cloud upload." \
-  --homepage "https://github.com/almondsun/nivune/releases/latest"
+  --homepage "https://github.com/almondsun/nivune/releases"
 ```
 
 Replace the topic set through the GitHub API:

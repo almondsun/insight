@@ -34,7 +34,7 @@ export function ResultsTable({
       <div className="table">
         <div className="thead"><span>Account</span><span>Change</span></div>
         <div className="empty">
-          This is the oldest snapshot. Select a newer snapshot to compare it with the immediately prior import.
+          Choose two different snapshots to compare relationship changes.
         </div>
       </div>
     );

@@ -19,9 +19,10 @@ Nivune is a local-first desktop application for exploring follower and following
 - [GitHub repository metadata](GITHUB_METADATA.md)
 - [Contributing](../CONTRIBUTING.md)
 - [Security policy](../SECURITY.md)
+- [Dependency risk register](DEPENDENCY_RISK.md)
 
 ## Current product boundary
 
-Current `main` imports complete ZIP archives or extracted folders containing both follower and following JSON files. Its analytics, history, database, and reports are local. It does not log in to Instagram, scrape profiles, upload relationship data, or send telemetry. Published v0.1.1 has a weaker import boundary; review the [version differences](GETTING_STARTED.md#version-differences).
+Preview 4 and current `main` import complete ZIP archives or extracted folders containing both follower and following JSON files. Analytics, history, backups, and reports run locally. Nivune does not log in to Instagram, scrape profiles, upload relationship data, or send telemetry. Former Preview 3 and stable v0.1.1 differ; review the [version differences](GETTING_STARTED.md#version-differences).
 
 Fame is roadmap research, not a released feature. Its network retrieval and user workflow remain unavailable.

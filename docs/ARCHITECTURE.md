@@ -1,6 +1,6 @@
 # Application Architecture
 
-This document describes the current `main` branch. Nivune is a Tauri 2 desktop application: React renders the interface, Rust owns native and trust-sensitive operations, and SQLite stores normalized local history. Published releases under the former insIGht name predate the current native path boundary and stricter importer; see [version differences](GETTING_STARTED.md#version-differences).
+This document describes Preview 4 and current `main`. Nivune is a Tauri 2 desktop application: React renders the interface, Rust owns native and trust-sensitive operations, and SQLite stores normalized local history. Older former-name releases differ; see [version differences](GETTING_STARTED.md#version-differences).
 
 ```text
 Official Instagram JSON ZIP or folder
@@ -56,6 +56,8 @@ React and TanStack Query manage server-state caching, mutations, debounced searc
 
 The interface supports any two distinct snapshots in one account. Direction-filtered smart lists and exports share the same native query contract.
 
+The root application accepts a typed `NivuneApi` client with the native Tauri client as its production default. The isolated documentation preview supplies a synthetic in-memory client to the same interface; it is not built into the desktop bundle and has no filesystem or network adapter. Playwright drives that preview to keep documentation screenshots aligned with the real React interface.
+
 ## Validation
 
 The repository's CI-equivalent command is:
@@ -65,6 +67,8 @@ npm run check
 ```
 
 It runs the TypeScript/Vite production build, frontend tests, Rust formatting check, strict Clippy analysis, and locked Rust tests. CI separately audits production npm dependencies and runs dependency review and CodeQL workflows.
+
+Documentation changes use `npm run docs:check` to validate local Markdown targets and anchors and compare the synthetic Playwright tour with the checked-in screenshots. Intentional UI updates regenerate those images with `npm run docs:screenshots`.
 
 Two ignored Rust integration tests can be enabled locally by setting `NIVUNE_REAL_EXPORT` to a private export. The former `INSIGHT_REAL_EXPORT` name remains accepted for developer compatibility. Their input must never be committed or attached to a report.
 

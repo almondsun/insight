@@ -4,15 +4,19 @@ This roadmap separates features people can use today from work that requires fur
 
 ## Available today
 
-The current desktop application provides:
+Preview 4 and current `main` provide:
 
 - Complete Instagram JSON ZIP and extracted-folder imports.
 - Followers, following, mutuals, and both non-reciprocal categories.
 - Searchable local relationship lists.
 - Multiple account histories and immutable snapshots.
-- Additions and removals for a selected snapshot and its immediately prior import.
+- User-confirmed observation dates with follower, following, and mutual trends.
+- Additions and removals between any two distinct snapshots.
+- Per-username relationship timelines and direction-filtered smart lists.
 - CSV and JSON relationship and change exports.
-- Account rename, full-account deletion, and a read-only Fame engineering status view.
+- Passphrase-encrypted authenticated backups and validated restore.
+- Account rename, snapshot/account deletion, and a read-only Fame engineering status view.
+- The Nivune data-iris identity and one-time migration of former-name local history.
 - Local SQLite persistence with no Instagram login, scraping, upload, or telemetry.
 
 ## Product hardening

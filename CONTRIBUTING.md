@@ -8,7 +8,7 @@ Start with the [architecture overview](docs/ARCHITECTURE.md), then read the user
 2. Install dependencies with `npm ci`.
 3. Keep filesystem, archive, SQLite, and export behavior in Rust; keep presentation and transient UI state in React.
 4. Add or update tests for behavior changes.
-5. Run `npm run check`.
+5. Run `npm run check`. For documentation or visible UI changes, also run `npm run docs:check`.
 6. Open a pull request using the repository template.
 
 The repository is one Cargo workspace with one root `Cargo.lock`. The checked-in
@@ -29,7 +29,7 @@ cargo test --package nivune --lib handles_250k_unique_accounts_in_one_snapshot -
 - Do not weaken archive validation, filesystem boundaries, or error reporting to make a test pass.
 - Update documentation when workflows, supported formats, or privacy behavior change.
 - Keep [GitHub repository metadata](docs/GITHUB_METADATA.md) aligned with the live About panel when product positioning changes.
-- Include screenshots for visible interface changes when practical.
+- Regenerate the synthetic product tour with `npm run docs:screenshots` for visible interface changes, then review every changed image and run `npm run docs:check`.
 
 ## Commit Messages
 

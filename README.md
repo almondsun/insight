@@ -4,18 +4,15 @@
   <p><strong>See who follows you, who does not, and what changed—without connecting your Instagram account.</strong></p>
   <p>Nivune is a local-first desktop app for exploring official Instagram JSON exports.</p>
 
-  [![Latest release](https://img.shields.io/github/v/release/almondsun/nivune?display_name=tag&sort=semver)](https://github.com/almondsun/nivune/releases/latest)
+  [![Latest release](https://img.shields.io/github/v/release/almondsun/nivune?display_name=tag&include_prereleases&sort=semver)](https://github.com/almondsun/nivune/releases)
   [![CI](https://github.com/almondsun/nivune/actions/workflows/ci.yml/badge.svg)](https://github.com/almondsun/nivune/actions/workflows/ci.yml)
   [![CodeQL](https://github.com/almondsun/nivune/actions/workflows/codeql.yml/badge.svg)](https://github.com/almondsun/nivune/actions/workflows/codeql.yml)
   [![License: MIT](https://img.shields.io/badge/license-MIT-e1306c.svg)](LICENSE)
 
-  [Download the latest release](https://github.com/almondsun/nivune/releases/latest) · [Read the docs](docs/README.md) · [Get support](SUPPORT.md)
+  [Download Preview 4](https://github.com/almondsun/nivune/releases/tag/v0.2.0-preview.4) · [Read the docs](docs/README.md) · [Get support](SUPPORT.md)
 </div>
 
-![The Nivune desktop import screen](docs/assets/nivune-preview.png)
-
-> [!IMPORTANT]
-> Nivune is the name of current `main`. Existing v0.2 preview and v0.1.1 downloads retain the former insIGht name; a Nivune-branded release has not been published yet.
+![Nivune Overview showing synthetic audience totals and a four-snapshot trend](docs/assets/screenshots/overview.png)
 
 ## Your Instagram relationships, made understandable
 
@@ -24,9 +21,6 @@ Instagram gives you a copy of your information, but not an easy way to explore i
 | Explore | Compare | Keep control |
 | --- | --- | --- |
 | Browse followers, following, mutuals, and non-reciprocal relationships. | Import snapshots over time to see additions and removals. | Keep archives and analytics on your device, with no Instagram login or telemetry. |
-
-> [!NOTE]
-> Current `main` adds user-confirmed observation dates, an audience trend overview, arbitrary snapshot comparisons, per-account relationship history, and an original data-iris identity. These changes are not part of the downloadable preview.3 binaries yet.
 
 ### How it works
 
@@ -53,7 +47,7 @@ Instagram gives you a copy of your information, but not an easy way to explore i
 
 ## Privacy, without vague promises
 
-The v0.2 preview application does not log in to Instagram, scrape profiles, upload archives, use telemetry, or require a network connection for analytics. Rust owns file access and archive parsing; the WebView cannot choose arbitrary filesystem paths. The downloadable v0.1.1 release preserves the no-login, no-scraping, no-upload, and no-telemetry boundary, but predates the current native path mediation and stricter import validation.
+Preview 4 does not log in to Instagram, scrape profiles, upload archives, use telemetry, or require a network connection for analytics. Rust owns file access and archive parsing; the WebView cannot choose arbitrary filesystem paths. Preview 3 and v0.1.1 retain the former name and predate parts of the current workflow; review the [version comparison](docs/GETTING_STARTED.md#version-differences) before using them.
 
 Your local database and exported reports can still contain personal information. Nivune does not currently encrypt its live database, so protection depends on your operating-system account and disk security.
 
@@ -61,7 +55,7 @@ Your local database and exported reports can still contain personal information.
 
 ## Downloads
 
-Version 0.2.0-preview.3 provides unsigned builds and a release-wide `SHA256SUMS` file:
+Version 0.2.0-preview.4 provides unsigned Nivune builds and a release-wide `SHA256SUMS` file:
 
 | Platform | Current artifact choices | Architecture |
 | --- | --- | --- |
@@ -71,7 +65,7 @@ Version 0.2.0-preview.3 provides unsigned builds and a release-wide `SHA256SUMS`
 
 The installers are not code-signed or notarized. Windows and macOS may display an unknown-developer warning. Review the release notes and verify the SHA-256 digest shown by GitHub before installing.
 
-[Download the v0.2 preview →](https://github.com/almondsun/nivune/releases/tag/v0.2.0-preview.3)
+[Download Nivune Preview 4 →](https://github.com/almondsun/nivune/releases/tag/v0.2.0-preview.4)
 
 ## Fame roadmap
 
@@ -81,7 +75,7 @@ Fame is a proposed optional ranking feature based on public follower and followi
 
 ## Product identity
 
-Nivune uses an original data-iris mark rather than platform iconography. Current `main` migrates the former `app.insight.local/insight.db` history into `app.nivune.local/nivune.db` exactly once and retains the legacy database file as a recovery copy.
+Nivune uses an original data-iris mark rather than platform iconography. Preview 4 migrates the former `app.insight.local/insight.db` history into `app.nivune.local/nivune.db` exactly once and retains the legacy database file as a recovery copy.
 
 ## Documentation
 

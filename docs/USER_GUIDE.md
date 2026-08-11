@@ -1,12 +1,12 @@
 # User Guide
 
-Nivune organizes official Instagram relationship exports into accounts and snapshots. An account is a local history; each import into that history is an immutable snapshot. Existing downloads retain the former insIGht name; this guide describes current `main` unless a version difference is stated.
+Nivune organizes official Instagram relationship exports into accounts and snapshots. An account is a local history; each import into that history is an immutable snapshot. This guide describes Preview 4 and current `main`; see [version differences](GETTING_STARTED.md#version-differences) for older former-name downloads.
 
 ## Accounts and snapshots
 
 Use the account selector to switch between local histories. Import a later export into the matching account to build a timeline. Use a separate account for an export belonging to a different Instagram username.
 
-On current `main`, the import preview shows the source filename, follower total, following total, warnings, and archive owner. Confirm these details before importing. Current `main` rejects an owner username that conflicts with owner metadata in the archive. Published v0.1.1 does not include this owner-confirmation step.
+The import preview shows the source filename, follower total, following total, parser warnings, observation date, and archive owner. Confirm these details before importing. Preview 4 rejects an owner username that conflicts with owner metadata in the archive. Published v0.1.1 does not include this owner-confirmation step.
 
 Importing the same normalized follower and following membership twice is treated as a duplicate snapshot even if the ZIP filename or import time differs.
 
@@ -22,11 +22,15 @@ Importing the same normalized follower and following membership twice is treated
 
 Select a category and type part of a username in **Search username** to filter it. Usernames are matched without regard to letter case.
 
+![Relationships view populated with fictional synthetic usernames](assets/screenshots/relationships.png)
+
 ## Changes between imports
 
 Open **Changes** after importing at least two snapshots into the same account. Choose any two distinct snapshots; Nivune marks usernames as added or removed within the selected relationship category. The New/Lost follower and mutual smart lists apply a direction filter to the same native comparison and export query.
 
 Instagram exports are snapshots, not event logs. Nivune can only establish that a relationship differed between two imports; it cannot determine the exact moment of the change. Instagram also does not reliably provide a stable numeric account identifier, so a username change can appear as one removal and one addition.
+
+![Changes view comparing two synthetic snapshots](assets/screenshots/changes.png)
 
 ## Export a relationship list or changes
 
@@ -42,9 +46,13 @@ Restore validates the passphrase, authenticated encryption, 2 GB safety limit, S
 
 Treat reports as personal data: they may contain usernames and normalized Instagram profile URLs.
 
+![Settings view showing local analytics status and encrypted backup controls](assets/screenshots/settings.png)
+
 ## Manage accounts and snapshots
 
-In **Import history**, choose the trash button beside a snapshot and confirm deletion. Deletion removes that snapshot and its relationships from the local database. It cannot be undone through Nivune, although you can import the source archive again if you still have it.
+In **History**, choose the trash button beside a snapshot and confirm deletion. Deletion removes that snapshot and its relationships from the local database. It cannot be undone through Nivune, although you can import the source archive again if you still have it.
+
+![History view showing four synthetic observation dates](assets/screenshots/history.png)
 
 Deleting an imported snapshot does not delete or modify the original ZIP or extracted folder.
 
@@ -62,7 +70,7 @@ It extracts usernames, sanitized canonical profile URLs when available, and rela
 
 ## Current limitations
 
-- Current `main` supports complete Instagram JSON ZIP exports and extracted export folders.
-- Current `main` requires both follower and following relationship files; published v0.1.1 accepts partial and standalone JSON input.
+- Preview 4 and current `main` support complete Instagram JSON ZIP exports and extracted export folders.
+- Preview 4 and current `main` require both follower and following relationship files; published v0.1.1 accepts partial and standalone JSON input.
 - The local SQLite database is not encrypted by Nivune.
 - The Fame view reports engineering status only; retrieval and ranking remain unavailable.

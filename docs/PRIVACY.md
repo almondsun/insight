@@ -1,16 +1,16 @@
 # Privacy and Data Handling
 
-> Current `main` can create and restore passphrase-encrypted age backups. The live SQLite database remains unencrypted; backup encryption does not change that local-storage boundary. Backup passphrases are used in memory for the requested operation and are not persisted by the app.
+> Preview 4 and current `main` can create and restore passphrase-encrypted age backups. The live SQLite database remains unencrypted; backup encryption does not change that local-storage boundary. Backup passphrases are used in memory for the requested operation and are not persisted by the app.
 
-This document describes the behavior implemented on the current `main` branch and explicitly identifies where published v0.1.1 differs. It separates shipped guarantees from proposed Fame research so users can make informed decisions.
+This document describes Preview 4 and current `main` and explicitly identifies where older releases differ. It separates shipped guarantees from proposed Fame research so users can make informed decisions.
 
 ## Version scope
 
-Both current `main` and published v0.1.1 perform relationship analytics locally without Instagram credentials, scraping, archive upload, or telemetry.
+Preview 4, current `main`, and published former-name releases perform relationship analytics locally without Instagram credentials, scraping, archive upload, or telemetry.
 
-Current `main` adds native-only import and export path mediation, required archive-owner confirmation, rejection of partial or standalone relationship inputs, and folder entry, depth, and aggregate relevant-byte limits. These protections are not present in the v0.1.1 binaries. See the [complete version comparison](GETTING_STARTED.md#version-differences).
+Preview 4 includes native-only import and export path mediation, required archive-owner confirmation, rejection of partial or standalone relationship inputs, and bounded archive metadata, traversal, compressed work, decompressed data, and record counts. These protections are not all present in the v0.1.1 binaries. See the [complete version comparison](GETTING_STARTED.md#version-differences).
 
-## Current main application
+## Current application
 
 The current relationship-analytics workflow is local-first:
 
@@ -21,14 +21,14 @@ The current relationship-analytics workflow is local-first:
 - Nivune does not ask for Instagram credentials, connect to an Instagram account, scrape profiles, upload archives, or send usage telemetry.
 - The source ZIP or folder is read in place and is not copied into application storage.
 
-The current `main` WebView content security policy permits application resources and Tauri IPC. Network retrieval is not exposed to the interface. In v0.1.1, file paths selected through the Tauri dialog plugin pass through the WebView command boundary.
+The Preview 4 WebView content security policy permits application resources and Tauri IPC. Network retrieval is not exposed to the interface. In v0.1.1, file paths selected through the Tauri dialog plugin pass through the WebView command boundary.
 
 ## Data that is stored
 
 The local database can contain:
 
 - An account label and confirmed owner username.
-- Snapshot import times, source names, and membership hashes.
+- Snapshot import times, user-confirmed observation dates and their provenance, source names, follower/following totals, and membership hashes.
 - Normalized related-account usernames.
 - Sanitized canonical Instagram profile URLs when supplied by the export.
 - Relationship timestamps when supplied by the export.
@@ -36,7 +36,7 @@ The local database can contain:
 
 The database schema reserves tables for the Fame persistence foundation, but the released interface has no retrieval or run command that populates network observations.
 
-The database is stored as `nivune.db` inside the operating system application-data directory resolved for `app.nivune.local`. On first launch, current `main` transactionally copies an existing former-name `app.insight.local/insight.db` into the Nivune location and retains the original as a recovery copy. Existing Nivune data is never overwritten by this migration.
+The database is stored as `nivune.db` inside the operating system application-data directory resolved for `app.nivune.local`. On first launch, Preview 4 transactionally copies an existing former-name `app.insight.local/insight.db` into the Nivune location and retains the original as a recovery copy. Existing Nivune data is never overwritten by this migration.
 
 ## Data that is not stored
 
@@ -46,17 +46,20 @@ Nivune does not retain the raw archive body, passwords, login sessions, cookies,
 
 The native application, not WebView JavaScript, chooses import and export paths. Imported archives are treated as untrusted input.
 
-Current `main` limits include:
+Preview 4 limits include:
 
 - At most 10,000 archive or folder entries inspected.
 - At most 2,000 relevant files.
+- At most 16 MiB for a ZIP central directory and 64 KiB for a ZIP64 end record.
 - At most 16 MiB per relevant JSON file.
 - At most 128 MiB of relevant JSON data in total.
-- Nested directory symlinks are not followed. A symlink explicitly selected as the import root may be resolved by the directory walker.
+- At most 32 MiB of compressed data per relevant ZIP entry and 256 MiB of relevant compressed work in total.
+- At most 500,000 parsed relationship records.
+- Neither nested directory symlinks nor a symlink selected as the traversal root is followed.
 - Enclosed ZIP paths only, preventing archive path traversal.
 - A maximum folder traversal depth of 20.
 
-On current `main`, malformed relationship JSON, invalid usernames, partial relationship exports, unsafe paths, and size-limit violations fail the import. Published v0.1.1 does not enforce the complete-export requirement or the current folder entry, depth, and aggregate-byte limits.
+In Preview 4, malformed relationship JSON, invalid usernames, partial relationship exports, unsafe paths or ZIP metadata, and limit violations fail the import. Published v0.1.1 does not enforce the complete-export requirement or all current traversal and work limits.
 
 ## What still depends on you
 
